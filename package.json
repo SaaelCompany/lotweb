@@ -1,0 +1,17 @@
+{
+  "name": "lotweb",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "build": "node -e \"console.log('lotweb: schema is applied on start')\""
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "nodemailer": "^10.5.0",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4"
+  }
+}
