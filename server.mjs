@@ -1,9 +1,70 @@
 import http from "node:http";
 import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
+
+const root = dirname(fileURLToPath(import.meta.url));
+
+function loadEnv(file) {
+  if (!existsSync(file)) return;
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || process.env[key] !== undefined) continue;
+    let value = trimmed.slice(eq + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+    process.env[key] = value;
+  }
+}
+
+if (process.argv[2] === "setup") {
+  const file = join(root, ".env");
+  if (existsSync(file)) {
+    console.log(`.env уже лежит рядом с проектом: ${file}`);
+  } else {
+    writeFileSync(
+      file,
+      `# Этот файл лежит рядом с server.mjs и в git не попадает.
+PORT=3000
+# DATABASE_URL=postgres://lot:password@127.0.0.1:5432/lot
+
+ROBOKASSA_MERCHANT_LOGIN=
+ROBOKASSA_PASSWORD1=
+ROBOKASSA_PASSWORD2=
+ROBOKASSA_HASH=md5
+ROBOKASSA_TEST=1
+
+XUI_BASE_URL=
+XUI_API_TOKEN=
+XUI_INBOUND_ID=
+XUI_SUB_BASE_URL=
+# XUI_USERNAME=
+# XUI_PASSWORD=
+# XUI_FLOW=xtls-rprx-vision
+
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=
+`,
+      { mode: 0o600 },
+    );
+    console.log(`Создан ${file}`);
+  }
+  console.log("Впишите значения в .env и запустите ./install.sh start");
+  process.exit(0);
+}
+
+loadEnv(join(root, ".env"));
 
 const PORT = Number(process.env.PORT || 3000);
 const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
