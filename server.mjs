@@ -51,6 +51,9 @@ XUI_SUB_BASE_URL=
 # XUI_PASSWORD=
 # XUI_FLOW=xtls-rprx-vision
 
+# Почта, с которой открывается страница /admin. Несколько адресов через запятую.
+ADMIN_EMAIL=
+
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USER=
@@ -178,6 +181,14 @@ function xuiConfigured() {
 
 function mailConfigured() {
   return Boolean(env("SMTP_HOST") && env("SMTP_FROM"));
+}
+
+function adminEmails() {
+  return env("ADMIN_EMAIL").split(/[,;\s]+/).map((item) => item.trim().toLowerCase()).filter(Boolean);
+}
+
+function isAdmin(user) {
+  return Boolean(user && adminEmails().includes(String(user.email || "").toLowerCase()));
 }
 
 function liveCheckout() {
@@ -682,9 +693,56 @@ function normalizeKey(row) {
   };
 }
 
+function mapPlan(row) {
+  return {
+    ...row,
+    days: Number(row.days),
+    price_rub: Number(row.price_rub),
+    traffic_gb: Number(row.traffic_gb),
+    sort: Number(row.sort ?? 0),
+    active: truthy(row.active),
+  };
+}
+
 async function listPlans() {
-  const rows = await sql("select id, title, days, price_rub, traffic_gb from plans where active = true order by sort, days");
-  return rows.map((row) => ({ ...row, days: Number(row.days), price_rub: Number(row.price_rub), traffic_gb: Number(row.traffic_gb) }));
+  const rows = await sql("select id, title, days, price_rub, traffic_gb, sort, active from plans where active = true order by sort, days");
+  return rows.map(mapPlan);
+}
+
+async function listPlansAll() {
+  const rows = await sql("select id, title, days, price_rub, traffic_gb, sort, active from plans order by sort, days, id");
+  return rows.map(mapPlan);
+}
+
+async function savePlan(input) {
+  const id = String(input.id || "").trim().toLowerCase();
+  const title = String(input.title || "").trim().replace(/\s+/g, " ");
+  const days = Number(input.days);
+  const price = Number(input.priceRub);
+  const traffic = Number(input.trafficGb ?? 0);
+  const sort = Number(input.sort ?? days);
+  const active = input.active !== false && input.active !== "false" && input.active !== 0;
+  if (!PLAN_RE.test(id)) return { error: "Код тарифа: латинские буквы и цифры, до 32 знаков", status: 400 };
+  if (title.length < 1 || title.length > 80) return { error: "Название от 1 до 80 символов", status: 400 };
+  if (!Number.isInteger(days) || days < 1 || days > 3650) return { error: "Срок от 1 до 3650 дней", status: 400 };
+  if (!Number.isInteger(price) || price < 1 || price > 1_000_000) return { error: "Цена от 1 до 1 000 000 ₽", status: 400 };
+  if (!Number.isInteger(traffic) || traffic < 0 || traffic > 100_000) return { error: "Трафик укажите числом гигабайт. 0 значит без лимита.", status: 400 };
+  if (!Number.isInteger(sort) || sort < 0 || sort > 10_000) return { error: "Порядок от 0 до 10000", status: 400 };
+  if (input.create) {
+    const existing = await sql("select id from plans where id = $1", [id]);
+    if (existing[0]) return { error: "Такой код тарифа уже есть", status: 409 };
+    await sql(
+      "insert into plans (id, title, days, price_rub, traffic_gb, sort, active) values ($1,$2,$3,$4,$5,$6,$7)",
+      [id, title, days, price, traffic, sort, active],
+    );
+    return { ok: true };
+  }
+  const updated = await sql(
+    "update plans set title=$2, days=$3, price_rub=$4, traffic_gb=$5, sort=$6, active=$7 where id=$1 returning id",
+    [id, title, days, price, traffic, sort, active],
+  );
+  if (!updated[0]) return { error: "Тариф не найден", status: 404 };
+  return { ok: true };
 }
 
 async function listKeys(userId) {
@@ -1058,55 +1116,56 @@ function orderJson(order, key) {
 }
 
 const CSS = `
-:root { --bg:#f3f5f8; --ink:#16181d; --muted:#5e6772; --line:#dfe3ea; --card:#fff; --accent:#0b57d0; --accent-ink:#fff; --clay:#b42318; --ok:#067647; --ok-bg:#e7f6ee; }
+:root { --bg:#f7f7f8; --ink:#1a1a1a; --muted:#666; --line:#e4e4e7; --card:#fff; --clay:#b42318; --ok:#067647; --ok-bg:#e8f6ee; }
 * { box-sizing:border-box; }
 [hidden] { display:none !important; }
-body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:"Golos Text","Segoe UI",sans-serif; line-height:1.45; }
-a { color:inherit; } button, input, textarea { font:inherit; color:inherit; }
-h1,h2,h3 { margin:0; font-weight:600; letter-spacing:-.02em; }
-h1 { font-size:32px; line-height:1.2; } h2 { font-size:20px; }
-.wrap { width:min(960px, calc(100% - 32px)); margin:0 auto; }
-.topbar { position:sticky; top:0; z-index:2; background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(10px); }
-.topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:60px; }
+body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:"Golos Text","Segoe UI",sans-serif; line-height:1.5; }
+a { color:inherit; } button, input, textarea, select { font:inherit; color:inherit; }
+h1,h2,h3 { margin:0; font-weight:650; letter-spacing:-.02em; }
+h1 { font-size:34px; line-height:1.2; } h2 { font-size:18px; }
+.wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
+.topbar { background:#fff; border-bottom:1px solid var(--line); }
+.topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; }
 .logo { text-decoration:none; font-weight:700; font-size:18px; }
 .nav { display:flex; align-items:center; gap:8px; }
-.user { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
-.hero { padding:36px 0 8px; max-width:640px; } .lede { margin:10px 0 0; color:var(--muted); font-size:16px; }
-.section { padding:20px 0 56px; }
-.tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-.tariff, .card, .key, .plan { background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 1px 2px rgba(16,24,40,.04); }
-.tariff { padding:18px; display:flex; flex-direction:column; gap:6px; }
-.tariff.popular { border-color:#b9d0fb; box-shadow:inset 0 3px 0 var(--accent); }
-.badge { align-self:flex-start; background:#e8f0fe; color:var(--accent); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; }
-.price { font-size:28px; font-weight:650; margin:8px 0 4px; }
-.muted { color:var(--muted); } .kicker { margin:0 0 8px; color:var(--accent); font-size:13px; font-weight:600; }
-.btn, .ghost, .lime { border-radius:8px; padding:10px 14px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
-.btn, .lime { background:var(--accent); color:var(--accent-ink); border:0; }
-.ghost { background:#fff; border:1px solid var(--line); } .full { width:100%; }
-.notice { padding:12px 14px; background:#fff7e8; border:1px solid #f3dfb6; border-radius:10px; color:#6b4e12; }
-.error { color:var(--clay); margin:0; }
-.stack { display:grid; gap:12px; } label { display:grid; gap:6px; font-weight:600; font-size:14px; }
-input, textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:8px; padding:11px 12px; }
+.user { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
+.hero { padding:40px 0 8px; } .lede { margin:8px 0 0; max-width:560px; color:var(--muted); }
+.section { padding:20px 0 48px; }
+.tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.tariff, .card, .key, .plan, .admin-row { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.tariff { padding:20px; display:flex; flex-direction:column; gap:8px; }
+.tariff.popular { border-color:#111; }
+.badge { align-self:flex-start; border:1px solid var(--line); border-radius:999px; padding:2px 8px; font-size:12px; color:var(--muted); }
+.price { font-size:30px; font-weight:700; margin:4px 0; }
+.muted { color:var(--muted); } .kicker { margin:0 0 6px; color:var(--muted); font-size:13px; }
+.features { margin:0; padding:0; list-style:none; color:var(--muted); font-size:14px; display:grid; gap:4px; }
+.btn, .ghost, .lime { border-radius:6px; padding:10px 14px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
+.btn, .lime { background:#111; color:#fff; border:1px solid #111; }
+.ghost { background:#fff; color:#111; border:1px solid #d4d4d8; } .full { width:100%; margin-top:auto; }
+.notice { padding:12px 14px; background:#fff; border:1px solid #ead7a3; border-radius:8px; color:#6b4e12; }
+.error { color:var(--clay); margin:0; min-height:1.2em; }
+.stack { display:grid; gap:12px; } label { display:grid; gap:6px; font-size:13px; color:var(--muted); }
+input, textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:6px; padding:10px 12px; }
 textarea { min-height:72px; font-family:ui-monospace,monospace; font-size:13px; }
-.code { font-size:24px; letter-spacing:.28em; text-align:center; }
-.demo-code { background:#f4f7fb; border:1px dashed #c5d4ea; border-radius:10px; padding:12px; } .demo-code b { font-size:28px; letter-spacing:.16em; }
-.keys { display:grid; gap:12px; } .key { padding:16px; } .card { padding:18px; }
+.keys { display:grid; gap:12px; } .key, .card { padding:18px; }
 .key-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-.pill { border-radius:6px; padding:3px 8px; font-size:12px; font-weight:600; background:var(--ok-bg); color:var(--ok); }
+.pill { border-radius:999px; padding:3px 8px; font-size:12px; background:var(--ok-bg); color:var(--ok); }
 .pill.warn { background:#fdecea; color:var(--clay); }
-.row { display:flex; flex-wrap:wrap; gap:8px; } .qr { width:148px; height:148px; border-radius:8px; background:#fff; border:1px solid var(--line); }
-.plan { text-align:left; padding:14px; cursor:pointer; } .plan strong { display:block; font-size:20px; margin-top:4px; }
-.plan:hover, .tariff:hover { border-color:#b9c3d4; }
-button:focus-visible, a:focus-visible, input:focus { outline:2px solid #8eb4f5; outline-offset:2px; }
-footer { color:var(--muted); font-size:13px; padding-bottom:28px; }
-@media (max-width:800px) { .tariffs, .plans { grid-template-columns:1fr; } h1 { font-size:26px; } .user { display:none; } }
+.row { display:flex; flex-wrap:wrap; gap:8px; } .qr { width:140px; height:140px; border-radius:6px; background:#fff; border:1px solid var(--line); }
+.plan { text-align:left; padding:14px; cursor:pointer; } .plan strong { display:block; font-size:20px; margin-top:4px; color:#111; }
+.admin-list { display:grid; gap:12px; } .admin-row { padding:16px; display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; align-items:end; }
+.admin-row .error { grid-column:1 / -1; }
+.check { display:flex; align-items:center; gap:6px; white-space:nowrap; } .check input { width:auto; }
+button:focus-visible, a:focus-visible, input:focus { outline:2px solid #111; outline-offset:2px; }
+footer { color:var(--muted); font-size:13px; padding-bottom:32px; }
+@media (max-width:900px) { .tariffs, .plans, .admin-row { grid-template-columns:1fr; } h1 { font-size:28px; } .user { display:none; } }
 `;
 
 function layout(user, main, script = "") {
   const nav = user
-    ? `<span class="user">${esc(user.email)}</span><a class="lime" href="/cabinet">Кабинет</a>
-       <form method="post" action="/api/auth/logout"><button class="ghost" type="submit">Выйти</button></form>`
-    : `<a class="lime" href="/login">Войти</a>`;
+    ? `<span class="user">${esc(user.email)}</span>${isAdmin(user) ? `<a class="ghost" href="/admin">Тарифы</a>` : ""}<a class="ghost" href="/cabinet">Кабинет</a>
+       <form method="post" action="/api/auth/logout"><button class="btn" type="submit">Выйти</button></form>`
+    : `<a class="btn" href="/login">Войти</a>`;
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Лот — ключи VPN</title><link rel="icon" href="/favicon.svg">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
@@ -1116,13 +1175,15 @@ function layout(user, main, script = "") {
 }
 
 function planCards(plans, user) {
-  return plans.map((plan) => {
+  const popularIndex = plans.length >= 3 ? 1 : -1;
+  return plans.map((plan, index) => {
     const next = `/cabinet?plan=${plan.id}`;
     const href = user ? next : `/login?next=${encodeURIComponent(next)}`;
-    const popular = plan.id === "m3";
-    return `<article class="tariff${popular ? " popular" : ""}">${popular ? `<span class="badge">Чаще берут</span>` : ""}
+    const traffic = plan.traffic_gb > 0 ? `${plan.traffic_gb} ГБ` : "Трафик без лимита";
+    return `<article class="tariff${index === popularIndex ? " popular" : ""}">${index === popularIndex ? `<span class="badge">Обычно берут</span>` : ""}
       <h3>${esc(plan.title)}</h3><p class="price">${esc(formatRub(plan.price_rub))}</p>
-      <p class="muted">${plan.days} дней доступа</p><a class="${popular ? "lime" : "btn"}" href="${esc(href)}">Оформить</a></article>`;
+      <ul class="features"><li>${plan.days} дней</li><li>${esc(traffic)}</li><li>Продление того же ключа</li></ul>
+      <a class="btn full" href="${esc(href)}">Купить</a></article>`;
   }).join("");
 }
 
@@ -1135,8 +1196,8 @@ function homePage(user, plans) {
   const banner = liveCheckout()
     ? (test ? `<p class="notice">Робокасса в тестовом режиме: счёт создаётся, деньги не списываются. Уберите ROBOKASSA_TEST=1 и перезапустите сайт. В полях паролей должны быть боевые пароли, не тестовая пара.</p>` : "")
     : `<p class="notice">Оплата пока учебная, деньги не уходят в Робокассу. ${esc(gaps.join("; "))}. После правки .env выполните ./install.sh start.</p>`;
-  return layout(user, `<div class="wrap"><section class="hero"><h1>Ключ VPN после оплаты</h1>
-    <p class="lede">Почта без пароля и без кода. Оплата через Робокассу. Новый ключ или продление того, что уже есть.</p></section>
+  return layout(user, `<div class="wrap"><section class="hero"><h1>Ключи VPN</h1>
+    <p class="lede">Выберите срок и оплатите через Робокассу. Вход только по почте, без пароля и кода. Ключ появится в кабинете.</p></section>
     ${banner}<section class="section"><div class="tariffs">${planCards(plans, user)}</div>
     <p class="muted">Трафик не ограничен. При продлении дни прибавляются к оставшемуся сроку.</p></section>
     <footer>Кабинет открывается по той почте, которую вы ввели. Код на неё не отправляется.</footer></div>`);
@@ -1221,6 +1282,46 @@ function cabinetPage(user, plans, keys, initialPlan) {
     <div class="stack"><h2>Ваши ключи</h2>${keys.length ? `<div class="keys">${cards}</div>` : `<p class="muted">Пока пусто. Ниже можно купить первый ключ.</p>`}
     <section class="card stack" id="buy"><h2 id="intent-title" style="margin:0">Новый ключ</h2><p id="intent-hint" class="muted" style="margin:0">Появится отдельный ключ. Старые останутся в списке.</p>
     <button id="new-key" class="ghost" type="button">Создать новый, а не продлевать</button><div class="plans">${picks}</div><p id="err" class="error"></p></section></div></div>`, script);
+}
+
+function adminPage(user, plans) {
+  const field = (name, label, value, extra = "") => `<label>${label}<input name="${name}" value="${esc(value)}" ${extra}></label>`;
+  const row = (plan, create) => `<form class="${create ? "admin-row" : "admin-row"}" id="${create ? "create-plan" : ""}">
+      ${field("id", "Код", plan.id, create ? "required placeholder=\"m12\"" : "readonly")}
+      ${field("title", "Название", plan.title, "required")}
+      ${field("days", "Дней", plan.days, "type=\"number\" min=\"1\" required")}
+      ${field("priceRub", "Цена, ₽", plan.price_rub, "type=\"number\" min=\"1\" required")}
+      ${field("trafficGb", "ГБ, 0 = без лимита", plan.traffic_gb, "type=\"number\" min=\"0\" required")}
+      ${field("sort", "Порядок", plan.sort, "type=\"number\" min=\"0\" required")}
+      <label class="check"><input name="active" type="checkbox" ${plan.active ? "checked" : ""}>Показывать</label>
+      <button class="btn" type="submit">${create ? "Добавить" : "Сохранить"}</button>
+      <p class="error"></p>
+    </form>`;
+  const script = `
+    async function send(form, create) {
+      const err = form.querySelector(".error");
+      err.textContent = "";
+      const body = Object.fromEntries(new FormData(form).entries());
+      body.active = Boolean(form.querySelector('[name="active"]').checked);
+      body.days = Number(body.days);
+      body.priceRub = Number(body.priceRub);
+      body.trafficGb = Number(body.trafficGb);
+      body.sort = Number(body.sort);
+      body.create = create;
+      const response = await fetch("/api/admin/plans", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { err.textContent = data.error || "Не сохранилось"; return; }
+      location.reload();
+    }
+    document.querySelectorAll(".admin-list form").forEach((form) => { form.onsubmit = (event) => { event.preventDefault(); send(form, false); }; });
+    document.getElementById("create-plan").onsubmit = (event) => { event.preventDefault(); send(event.target, true); };
+  `;
+  return layout(user, `<div class="wrap section"><p class="kicker">Админ</p><h1>Тарифы</h1>
+    <p class="muted">Цена и срок берутся отсюда в момент оплаты. Старые оплаченные ключи не пересчитываются.</p>
+    <div class="admin-list">${plans.map((plan) => row(plan, false)).join("")}</div>
+    <h2>Новый тариф</h2>
+    ${row({ id: "", title: "", days: 30, price_rub: 249, traffic_gb: 0, sort: 10, active: true }, true)}
+    </div>`, script);
 }
 
 function payPage(user, order) {
@@ -1396,6 +1497,17 @@ async function handle(req, res) {
     const error = url.searchParams.get("error") === "link" ? "Ссылка устарела или уже использована. Запросите новую." : "";
     return send(res, 200, loginPage(null, url.searchParams.get("next") || "", error), { "content-type": "text/html; charset=utf-8" });
   }
+  if (req.method === "GET" && path === "/admin") {
+    if (!user) {
+      res.writeHead(303, { location: "/login?next=/admin" });
+      res.end();
+      return;
+    }
+    if (!isAdmin(user)) {
+      return send(res, 403, layout(user, `<div class="wrap section"><div class="card"><h1>Нет доступа</h1><p class="muted">Эта почта не указана в ADMIN_EMAIL. Добавьте её в .env и перезапустите сайт.</p></div></div>`), { "content-type": "text/html; charset=utf-8" });
+    }
+    return send(res, 200, adminPage(user, await listPlansAll()), { "content-type": "text/html; charset=utf-8" });
+  }
   if (req.method === "GET" && path === "/cabinet") {
     if (!user) {
       res.writeHead(303, { location: `/login?next=${encodeURIComponent(`/cabinet${url.search}`)}` });
@@ -1444,6 +1556,14 @@ async function handle(req, res) {
     return send(res, 200, payPage(user, found.order), { "content-type": "text/html; charset=utf-8" });
   }
 
+  if (req.method === "POST" && path === "/api/admin/plans") {
+    if (!user) return json(res, { error: "Войдите по почте" }, 401);
+    if (!isAdmin(user)) return json(res, { error: "Нет доступа" }, 403);
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const saved = await savePlan(body);
+    if (saved.error) return json(res, { error: saved.error }, saved.status);
+    return json(res, { ok: true });
+  }
   if (req.method === "POST" && path === "/api/orders") {
     if (!user) return json(res, { error: "Войдите по почте" }, 401);
     const body = JSON.parse((await readBody(req)) || "{}");
