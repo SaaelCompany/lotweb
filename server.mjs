@@ -1,5 +1,5 @@
 import http from "node:http";
-import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -380,38 +380,11 @@ async function sendMail(to, subject, text, html) {
   await transporter.sendMail({ from: process.env.SMTP_FROM, to, subject, text, html });
 }
 
-async function requestLogin({ emailRaw, next, origin, ip }) {
+async function requestLogin({ emailRaw, next, ip }) {
   const email = normalizeEmail(emailRaw);
   if (!email) return { error: "Введите почту целиком, например name@mail.ru", status: 400 };
-  if (await limited(email, ip)) return { error: "Слишком много писем. Попробуйте через 15 минут.", status: 429 };
-  if (liveCheckout() && !mailConfigured()) {
-    return { error: "Вход по почте ещё не подключён. Нужен SMTP, иначе код нельзя отправить.", status: 503 };
-  }
-  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  const token = randomBytes(32).toString("base64url");
-  const id = nid();
-  const nextPath = safeNext(next);
-  await sql("delete from login_codes where email = $1 and used_at is null", [email]);
-  await sql(
-    `insert into login_codes (id, email, code_hash, token_hash, next_path, expires_at) values ($1,$2,$3,$4,$5,$6)`,
-    [id, email, sha(`${email}:${code}`), sha(token), nextPath, new Date(Date.now() + 15 * 60 * 1000).toISOString()],
-  );
-  const link = `${origin}/auth/verify?token=${encodeURIComponent(token)}`;
-  if (mailConfigured()) {
-    try {
-      await sendMail(
-        email,
-        "Код для входа в Лот",
-        `Вход в Лот\n\nКод: ${code}\nОн действует 15 минут.\n\nИли откройте ссылку: ${link}\n\nЕсли вы не запрашивали вход, это письмо можно не читать.`,
-        `<p>Код для входа: <strong>${esc(code)}</strong></p><p>Он действует 15 минут.</p><p><a href="${esc(link)}">Войти в кабинет</a></p>`,
-      );
-    } catch {
-      await sql("update login_codes set used_at = now() where id = $1", [id]);
-      return { error: "Письмо не отправилось. Проверьте почтовый сервер и попробуйте ещё раз.", status: 502 };
-    }
-    return { ok: true, delivery: "email" };
-  }
-  return { ok: true, delivery: "screen", code, link };
+  if (await limited(email, ip)) return { error: "Слишком много попыток. Попробуйте через 15 минут.", status: 429 };
+  return openSession(email, next);
 }
 
 async function limited(email, ip) {
@@ -1133,7 +1106,7 @@ function layout(user, main, script = "") {
   const nav = user
     ? `<span class="user">${esc(user.email)}</span><a class="lime" href="/cabinet">Кабинет</a>
        <form method="post" action="/api/auth/logout"><button class="ghost" type="submit">Выйти</button></form>`
-    : `<a class="lime" href="/login">Войти по почте</a>`;
+    : `<a class="lime" href="/login">Войти</a>`;
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Лот — ключи VPN</title><link rel="icon" href="/favicon.svg">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
@@ -1149,7 +1122,7 @@ function planCards(plans, user) {
     const popular = plan.id === "m3";
     return `<article class="tariff${popular ? " popular" : ""}">${popular ? `<span class="badge">Чаще берут</span>` : ""}
       <h3>${esc(plan.title)}</h3><p class="price">${esc(formatRub(plan.price_rub))}</p>
-      <p class="muted">${plan.days} дней доступа</p><a class="${popular ? "lime" : "btn"}" href="${esc(href)}">${user ? "Оформить" : "Войти и оформить"}</a></article>`;
+      <p class="muted">${plan.days} дней доступа</p><a class="${popular ? "lime" : "btn"}" href="${esc(href)}">Оформить</a></article>`;
   }).join("");
 }
 
@@ -1163,52 +1136,32 @@ function homePage(user, plans) {
     ? (test ? `<p class="notice">Робокасса в тестовом режиме: счёт создаётся, деньги не списываются. Уберите ROBOKASSA_TEST=1 и перезапустите сайт. В полях паролей должны быть боевые пароли, не тестовая пара.</p>` : "")
     : `<p class="notice">Оплата пока учебная, деньги не уходят в Робокассу. ${esc(gaps.join("; "))}. После правки .env выполните ./install.sh start.</p>`;
   return layout(user, `<div class="wrap"><section class="hero"><h1>Ключ VPN после оплаты</h1>
-    <p class="lede">Вход по почте. Оплата через Робокассу. Новый ключ или продление того, что уже есть.</p></section>
+    <p class="lede">Почта без пароля и без кода. Оплата через Робокассу. Новый ключ или продление того, что уже есть.</p></section>
     ${banner}<section class="section"><div class="tariffs">${planCards(plans, user)}</div>
     <p class="muted">Трафик не ограничен. При продлении дни прибавляются к оставшемуся сроку.</p></section>
-    <footer>Ключ открывается только с той почты, на которую его купили.</footer></div>`);
+    <footer>Кабинет открывается по той почте, которую вы ввели. Код на неё не отправляется.</footer></div>`);
 }
 
 function loginPage(user, next, error) {
   const script = `
     const nextPath = ${JSON.stringify(safeNext(next))};
     const ask = document.getElementById("ask");
-    const box = document.getElementById("code-box");
-    const note = document.getElementById("note");
-    const screen = document.getElementById("screen-code");
     const err = document.getElementById("err");
-    let email = "";
     ask.onsubmit = async (event) => {
       event.preventDefault();
       err.textContent = "";
-      email = new FormData(ask).get("email");
+      const email = new FormData(ask).get("email");
       const response = await fetch("/api/auth/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, next: nextPath }) });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) { err.textContent = data.error || "Не удалось отправить код"; return; }
-      ask.hidden = true; box.hidden = false;
-      note.textContent = data.delivery === "email" ? "Код и ссылка отправлены на " + email + "." : "Почта ещё не подключена, поэтому код показан здесь. Для настоящих клиентов его нужно отправлять письмом.";
-      if (data.code) { screen.hidden = false; screen.querySelector("b").textContent = data.code; }
-    };
-    async function verify(code) {
-      err.textContent = "";
-      const response = await fetch("/api/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, code }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { err.textContent = data.error || "Код не подошёл"; return; }
+      if (!response.ok) { err.textContent = data.error || "Не удалось войти"; return; }
       location.href = data.next || "/cabinet";
-    }
-    box.onsubmit = (event) => { event.preventDefault(); verify(document.getElementById("code").value); };
-    document.getElementById("code").oninput = (event) => {
-      event.target.value = event.target.value.replace(/\\D/g, "").slice(0, 6);
-      if (event.target.value.length === 6) verify(event.target.value);
     };
   `;
-  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:420px"><p class="kicker">Вход</p><h1>Код на почту</h1>
-    <p class="muted">Пароль не нужен. Пришлём одноразовый код и ссылку, они живут 15 минут.</p>
+  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:420px"><p class="kicker">Вход</p><h1>Почта</h1>
+    <p class="muted">Пароль и код не нужны. Кабинет откроется сразу.</p>
     ${error ? `<p class="error">${esc(error)}</p>` : ""}
-    <form id="ask" class="stack"><label>Почта<input type="email" name="email" autocomplete="email" required placeholder="name@mail.ru"></label><button class="btn full" type="submit">Получить код</button></form>
-    <form id="code-box" class="stack" hidden><p id="note"></p><div id="screen-code" class="demo-code" hidden>Код <b></b></div>
-    <label>Код из письма<input id="code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
-    <button class="btn full" type="submit">Войти</button></form><p id="err" class="error"></p></div></div>`, script);
+    <form id="ask" class="stack"><label>Почта<input type="email" name="email" autocomplete="email" required placeholder="name@mail.ru"></label><button class="btn full" type="submit">Войти</button></form>
+    <p id="err" class="error"></p></div></div>`, script);
 }
 
 function cabinetPage(user, plans, keys, initialPlan) {
@@ -1415,9 +1368,9 @@ async function handle(req, res) {
 
   if (req.method === "POST" && path === "/api/auth/request") {
     const body = JSON.parse((await readBody(req)) || "{}");
-    const result = await requestLogin({ emailRaw: body.email, next: body.next, origin: requestOrigin(req), ip: clientIp(req) });
+    const result = await requestLogin({ emailRaw: body.email, next: body.next, ip: clientIp(req) });
     if (result.error) return json(res, { error: result.error }, result.status);
-    return json(res, result);
+    return json(res, { ok: true, next: result.nextPath }, 200, { "set-cookie": cookieHeader(req, result.sessionToken) });
   }
   if (req.method === "POST" && path === "/api/auth/verify") {
     const body = JSON.parse((await readBody(req)) || "{}");
