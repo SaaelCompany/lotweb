@@ -40,7 +40,8 @@ ROBOKASSA_MERCHANT_LOGIN=
 ROBOKASSA_PASSWORD1=
 ROBOKASSA_PASSWORD2=
 ROBOKASSA_HASH=md5
-ROBOKASSA_TEST=1
+# Единица переводит Робокассу в тестовые счета. Для списания денег строку уберите.
+# ROBOKASSA_TEST=1
 
 XUI_BASE_URL=
 XUI_API_TOKEN=
@@ -1084,48 +1085,48 @@ function orderJson(order, key) {
 }
 
 const CSS = `
-:root { --bg:#efe6d4; --ink:#1c1915; --muted:#61584c; --line:#d9cdb8; --card:#fffaf1; --green:#14352c; --lime:#dff26a; --clay:#b84324; }
+:root { --bg:#f3f5f8; --ink:#16181d; --muted:#5e6772; --line:#dfe3ea; --card:#fff; --accent:#0b57d0; --accent-ink:#fff; --clay:#b42318; --ok:#067647; --ok-bg:#e7f6ee; }
 * { box-sizing:border-box; }
-body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(900px 420px at 100% -10%, rgba(223,242,106,.45), transparent 60%), var(--bg); font-family:Manrope,"Segoe UI",sans-serif; line-height:1.5; }
-a { color:inherit; } button, input, textarea { font:inherit; }
-h1,h2,h3,.logo,.price { font-family:Unbounded,Manrope,sans-serif; letter-spacing:-.03em; }
-.wrap { width:min(1080px, calc(100% - 32px)); margin:0 auto; }
-.topbar { position:sticky; top:0; z-index:2; background:rgba(20,53,44,.96); color:#f6f1e6; }
-.topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:72px; }
-.logo { display:flex; align-items:center; gap:10px; text-decoration:none; font-size:22px; font-weight:700; }
-.mark { width:28px; height:28px; border-radius:8px; background:var(--lime); color:var(--green); display:grid; place-items:center; }
-.nav { display:flex; align-items:center; gap:10px; }
-.user { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#d7e4dc; font-size:14px; }
-.hero { display:grid; grid-template-columns:1.3fr .7fr; gap:28px; padding:64px 0 28px; align-items:end; }
-.kicker { margin:0 0 12px; color:#1d5342; font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:13px; }
-h1 { margin:0; font-size:clamp(40px,6vw,72px); line-height:.95; }
-.lede, .muted { color:var(--muted); }
-.card, .tariff, .key, .notice { background:var(--card); border:1px solid var(--line); border-radius:22px; }
-.card, .key { padding:22px; }
-.hero-card ol { margin:0; padding:0; list-style:none; display:grid; gap:14px; }
-.hero-card li { display:grid; grid-template-columns:auto 1fr; gap:12px; }
-.step { width:36px; height:36px; border-radius:50%; background:var(--green); color:var(--lime); display:grid; place-items:center; font-family:Unbounded,sans-serif; }
-.section { padding:18px 0 64px; }
-.tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-.tariff { padding:22px; display:flex; flex-direction:column; gap:8px; position:relative; }
-.tariff.popular { background:var(--green); color:#f6f1e6; }
-.badge { position:absolute; top:16px; right:16px; background:var(--lime); color:var(--green); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; }
-.price { font-size:40px; margin:12px 0 0; }
-.btn, .ghost, .lime { border:0; border-radius:999px; padding:12px 18px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
-.btn { background:var(--green); color:#f6f1e6; } .lime { background:var(--lime); color:var(--green); font-weight:700; }
-.ghost { background:transparent; color:inherit; border:1px solid currentColor; } .full { width:100%; }
-.notice { padding:14px 16px; background:#fff4d2; } .error { color:var(--clay); }
-.stack { display:grid; gap:14px; } label { display:grid; gap:6px; font-weight:700; }
-input, textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:14px; padding:12px 14px; }
-textarea { min-height:74px; } .code { font-size:28px; letter-spacing:.3em; text-align:center; font-family:Unbounded,sans-serif; }
-.demo-code { background:var(--green); color:var(--lime); border-radius:18px; padding:16px; } .demo-code b { font-size:32px; letter-spacing:.18em; }
-.keys { display:grid; gap:14px; } .key-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-.pill { border-radius:999px; padding:4px 10px; font-size:13px; background:#e7f6df; color:#1d5342; } .pill.warn { background:#fde4d6; color:var(--clay); }
-.row { display:flex; flex-wrap:wrap; gap:8px; } .qr { width:160px; height:160px; border-radius:12px; background:#fff; }
-.plan { text-align:left; background:#fff; border:1px solid var(--line); border-radius:18px; padding:14px; cursor:pointer; }
-.plan strong { display:block; font-family:Unbounded,sans-serif; font-size:22px; }
-button:focus-visible, a:focus-visible, input:focus { outline:3px solid var(--lime); outline-offset:2px; }
-@media (max-width:800px) { .hero, .tariffs, .plans { grid-template-columns:1fr; } .user { display:none; } }
+[hidden] { display:none !important; }
+body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:"Golos Text","Segoe UI",sans-serif; line-height:1.45; }
+a { color:inherit; } button, input, textarea { font:inherit; color:inherit; }
+h1,h2,h3 { margin:0; font-weight:600; letter-spacing:-.02em; }
+h1 { font-size:32px; line-height:1.2; } h2 { font-size:20px; }
+.wrap { width:min(960px, calc(100% - 32px)); margin:0 auto; }
+.topbar { position:sticky; top:0; z-index:2; background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(10px); }
+.topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:60px; }
+.logo { text-decoration:none; font-weight:700; font-size:18px; }
+.nav { display:flex; align-items:center; gap:8px; }
+.user { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
+.hero { padding:36px 0 8px; max-width:640px; } .lede { margin:10px 0 0; color:var(--muted); font-size:16px; }
+.section { padding:20px 0 56px; }
+.tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.tariff, .card, .key, .plan { background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 1px 2px rgba(16,24,40,.04); }
+.tariff { padding:18px; display:flex; flex-direction:column; gap:6px; }
+.tariff.popular { border-color:#b9d0fb; box-shadow:inset 0 3px 0 var(--accent); }
+.badge { align-self:flex-start; background:#e8f0fe; color:var(--accent); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; }
+.price { font-size:28px; font-weight:650; margin:8px 0 4px; }
+.muted { color:var(--muted); } .kicker { margin:0 0 8px; color:var(--accent); font-size:13px; font-weight:600; }
+.btn, .ghost, .lime { border-radius:8px; padding:10px 14px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
+.btn, .lime { background:var(--accent); color:var(--accent-ink); border:0; }
+.ghost { background:#fff; border:1px solid var(--line); } .full { width:100%; }
+.notice { padding:12px 14px; background:#fff7e8; border:1px solid #f3dfb6; border-radius:10px; color:#6b4e12; }
+.error { color:var(--clay); margin:0; }
+.stack { display:grid; gap:12px; } label { display:grid; gap:6px; font-weight:600; font-size:14px; }
+input, textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:8px; padding:11px 12px; }
+textarea { min-height:72px; font-family:ui-monospace,monospace; font-size:13px; }
+.code { font-size:24px; letter-spacing:.28em; text-align:center; }
+.demo-code { background:#f4f7fb; border:1px dashed #c5d4ea; border-radius:10px; padding:12px; } .demo-code b { font-size:28px; letter-spacing:.16em; }
+.keys { display:grid; gap:12px; } .key { padding:16px; } .card { padding:18px; }
+.key-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.pill { border-radius:6px; padding:3px 8px; font-size:12px; font-weight:600; background:var(--ok-bg); color:var(--ok); }
+.pill.warn { background:#fdecea; color:var(--clay); }
+.row { display:flex; flex-wrap:wrap; gap:8px; } .qr { width:148px; height:148px; border-radius:8px; background:#fff; border:1px solid var(--line); }
+.plan { text-align:left; padding:14px; cursor:pointer; } .plan strong { display:block; font-size:20px; margin-top:4px; }
+.plan:hover, .tariff:hover { border-color:#b9c3d4; }
+button:focus-visible, a:focus-visible, input:focus { outline:2px solid #8eb4f5; outline-offset:2px; }
+footer { color:var(--muted); font-size:13px; padding-bottom:28px; }
+@media (max-width:800px) { .tariffs, .plans { grid-template-columns:1fr; } h1 { font-size:26px; } .user { display:none; } }
 `;
 
 function layout(user, main, script = "") {
@@ -1135,9 +1136,9 @@ function layout(user, main, script = "") {
     : `<a class="lime" href="/login">Войти по почте</a>`;
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Лот — ключи VPN</title><link rel="icon" href="/favicon.svg">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Unbounded:wght@500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
     <style>${CSS}</style></head><body>
-    <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/"><span class="mark">Л</span>Лот</a><nav class="nav">${nav}</nav></div></header>
+    <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">Лот</a><nav class="nav">${nav}</nav></div></header>
     <main>${main}</main>${script ? `<script>${script}</script>` : ""}</body></html>`;
 }
 
@@ -1153,16 +1154,19 @@ function planCards(plans, user) {
 }
 
 function homePage(user, plans) {
-  const live = liveCheckout();
-  const banner = live ? "" : `<p class="notice"><strong>Демонстрационный режим. </strong>${mailConfigured() ? "" : "Письма не отправляются, код входа показывается на экране. "}${robokassaConfigured() ? "" : "Робокасса не подключена, оплата проходит учебной кнопкой. "}${xuiConfigured() ? "" : "Панель 3x-ui не подключена, ключ будет образцом и не откроет сервер. "}Настоящие платежи включатся, когда заданы Робокасса, панель и почта.</p>`;
-  return layout(user, `<div class="wrap"><section class="hero"><div><p class="kicker">Ключи VPN</p><h1>Оплатили — ключ уже в кабинете</h1>
-    <p class="lede">Вход по почте, без пароля. Оплата через Робокассу. После платежа Лот сам создаёт клиента в панели 3x-ui или продлевает тот ключ, который у вас уже есть.</p></div>
-    <aside class="card hero-card"><ol><li><span class="step">1</span><span>Письмо с кодом и ссылкой. Логина и пароля нет.</span></li>
-    <li><span class="step">2</span><span>Новый ключ или продление старого. Сумму считает сайт, не браузер.</span></li>
-    <li><span class="step">3</span><span>Ссылка подписки и QR. Их можно сразу вставить в приложение.</span></li></ol></aside></section>
-    ${banner}<section class="section"><h2>Тарифы</h2><p class="muted">Трафик не ограничен. Срок прибавляется к оставшимся дням, если ключ ещё действует.</p>
-    <div class="tariffs">${planCards(plans, user)}</div></section>
-    <footer class="muted">Ключ хранится за почтой, с которой вы вошли. Чужие ключи из кабинета не открываются.</footer></div>`);
+  const gaps = [];
+  if (!robokassaConfigured()) gaps.push("в .env не заданы логин и пароли Робокассы");
+  if (!env("XUI_BASE_URL") || !(env("XUI_API_TOKEN") || (env("XUI_USERNAME") && env("XUI_PASSWORD")))) gaps.push("не задан адрес панели или токен");
+  if (!inboundIds().length) gaps.push("пустой XUI_INBOUND_ID");
+  const test = env("ROBOKASSA_TEST") === "1";
+  const banner = liveCheckout()
+    ? (test ? `<p class="notice">Робокасса в тестовом режиме: счёт создаётся, деньги не списываются. Уберите ROBOKASSA_TEST=1 и перезапустите сайт. В полях паролей должны быть боевые пароли, не тестовая пара.</p>` : "")
+    : `<p class="notice">Оплата пока учебная, деньги не уходят в Робокассу. ${esc(gaps.join("; "))}. После правки .env выполните ./install.sh start.</p>`;
+  return layout(user, `<div class="wrap"><section class="hero"><h1>Ключ VPN после оплаты</h1>
+    <p class="lede">Вход по почте. Оплата через Робокассу. Новый ключ или продление того, что уже есть.</p></section>
+    ${banner}<section class="section"><div class="tariffs">${planCards(plans, user)}</div>
+    <p class="muted">Трафик не ограничен. При продлении дни прибавляются к оставшемуся сроку.</p></section>
+    <footer>Ключ открывается только с той почты, на которую его купили.</footer></div>`);
 }
 
 function loginPage(user, next, error) {
@@ -1198,7 +1202,7 @@ function loginPage(user, next, error) {
       if (event.target.value.length === 6) verify(event.target.value);
     };
   `;
-  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:480px"><p class="kicker">Вход</p><h1 style="font-size:40px">Только почта</h1>
+  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:420px"><p class="kicker">Вход</p><h1>Код на почту</h1>
     <p class="muted">Пароль не нужен. Пришлём одноразовый код и ссылку, они живут 15 минут.</p>
     ${error ? `<p class="error">${esc(error)}</p>` : ""}
     <form id="ask" class="stack"><label>Почта<input type="email" name="email" autocomplete="email" required placeholder="name@mail.ru"></label><button class="btn full" type="submit">Получить код</button></form>
@@ -1260,7 +1264,7 @@ function cabinetPage(user, plans, keys, initialPlan) {
     const wanted = ${JSON.stringify(initialPlan)};
     if (wanted) document.querySelector("[data-plan='" + wanted.replace(/[^a-z0-9]/g, "") + "']")?.scrollIntoView();
   `;
-  return layout(user, `<div class="wrap section"><p class="kicker">Кабинет</p><h1 style="font-size:48px">Ключи ${esc(user.email)}</h1>
+  return layout(user, `<div class="wrap section"><p class="kicker">Кабинет</p><h1>${esc(user.email)}</h1>
     <div class="stack"><h2>Ваши ключи</h2>${keys.length ? `<div class="keys">${cards}</div>` : `<p class="muted">Пока пусто. Ниже можно купить первый ключ.</p>`}
     <section class="card stack" id="buy"><h2 id="intent-title" style="margin:0">Новый ключ</h2><p id="intent-hint" class="muted" style="margin:0">Появится отдельный ключ. Старые останутся в списке.</p>
     <button id="new-key" class="ghost" type="button">Создать новый, а не продлевать</button><div class="plans">${picks}</div><p id="err" class="error"></p></section></div></div>`, script);
@@ -1278,8 +1282,8 @@ function payPage(user, order) {
         location.href = "/pay/success?order=${order.id}";
       };
     `;
-    return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:560px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
-      <h1 style="font-size:42px">${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
+    return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:440px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
+      <h1>${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
       <p class="notice">Робокасса или панель ещё не подключены. Эта кнопка только показывает, как ключ появляется после оплаты. Деньги не списываются.</p>
       <button id="demo-pay" class="btn full" type="button">Провести демо-оплату</button><p id="err" class="error"></p></div></div>`, script);
   }
@@ -1294,8 +1298,8 @@ function payPage(user, order) {
     shp: { order: order.id },
   });
   const test = env("ROBOKASSA_TEST") === "1";
-  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:560px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
-    <h1 style="font-size:42px">${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
+  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:440px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
+    <h1>${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
     <p class="muted">${esc(description)}. После оплаты ключ появится в кабинете сам.</p>
     ${test ? `<p class="notice">Включены тестовые платежи Робокассы.</p>` : ""}
     <form action="https://auth.robokassa.ru/Merchant/Index.aspx" method="post" class="stack">
@@ -1364,8 +1368,9 @@ function json(res, data, status = 200, headers = {}) {
 async function handle(req, res) {
   const url = new URL(req.url || "/", "http://localhost");
   const path = url.pathname;
+  if (req.method === "HEAD") req.method = "GET";
   if (req.method === "GET" && path === "/favicon.svg") {
-    send(res, 200, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#14352c"/><circle cx="16" cy="16" r="5.5" fill="none" stroke="#dff26a" stroke-width="2"/></svg>`, { "content-type": "image/svg+xml" });
+    send(res, 200, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#0b57d0"/><path d="M8 16h16M16 8v16" stroke="#fff" stroke-width="2"/></svg>`, { "content-type": "image/svg+xml" });
     return;
   }
   if ((req.method === "POST" || req.method === "GET") && path === "/api/robokassa/result") {
