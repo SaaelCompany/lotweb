@@ -1124,6 +1124,12 @@ async function listPendingOrders(userId) {
   return rows.map(normalizeOrder);
 }
 
+async function clearOrders() {
+  await sql("delete from orders");
+  await sql("alter sequence order_inv_seq restart with 1000");
+  return { ok: true };
+}
+
 async function listRecentOrders() {
   const rows = await sql(
     `select orders.id, orders.inv_id::text, orders.status, orders.amount_rub, orders.demo, orders.last_error, orders.kind,
@@ -1542,6 +1548,11 @@ async function handle(req, res) {
     }
   }
 
+  if (req.method === "POST" && path === "/api/admin/orders/clear") {
+    if (!user) return json(res, { error: "Войдите по почте" }, 401);
+    if (!isAdmin(user)) return json(res, { error: "Нет доступа" }, 403);
+    return json(res, await clearOrders());
+  }
   if (req.method === "POST" && path === "/api/admin/reissue") {
     if (!user) return json(res, { error: "Войдите по почте" }, 401);
     if (!isAdmin(user)) return json(res, { error: "Нет доступа" }, 403);

@@ -138,7 +138,9 @@
   <template id="tpl-admin">
     <div class="wrap section"><p class="kicker">Админ</p><h1>Тарифы и счета</h1>
       <p class="muted">Если деньги в Platega списались, а ключа нет, нажмите «Выдать ключ» у нужного счёта. Callback URL в кабинете Platega: адрес этого сайта по HTTPS с путём /api/platega/callback.</p>
-      <h2>Последние счета</h2><div class="orders" id="bills"></div>
+      <div class="key-head"><h2>Последние счета</h2><button id="clear-bills" class="ghost" type="button">Очистить счета</button></div>
+      <p class="muted">Кнопка удаляет только список счетов. Тарифы, ключи в кабинетах и клиенты в панели остаются.</p>
+      <div class="orders" id="bills"></div>
       <h2>Тарифы</h2><div class="admin-list" id="plan-list"></div>
       <h2>Новый тариф</h2>
       <form class="admin-row" id="create-plan"></form>
@@ -431,6 +433,12 @@
       if (response.status === 401) { location.href = "/login?next=/admin"; return; }
       if (!response.ok) { mount("tpl-denied"); return; }
       mount("tpl-admin");
+      document.getElementById("clear-bills").onclick = async () => {
+        if (!window.confirm("Удалить все счета из админки? Ключи и тарифы останутся.")) return;
+        const result = await api("/api/admin/orders/clear", { method: "POST" });
+        if (!result.response.ok) { window.alert(result.data.error || "Не удалось очистить счета"); return; }
+        location.reload();
+      };
       const bills = document.getElementById("bills");
       if (!data.orders?.length) bills.append(el("p", "muted", "Счетов пока нет."));
       (data.orders || []).forEach((order) => {
