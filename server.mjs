@@ -800,9 +800,9 @@ async function createOrder({ userId, planId, kind, keyId }) {
   const rows = await sql(
     `insert into orders (id, inv_id, user_id, plan_id, key_id, kind, amount_rub, status, demo)
      values ($1, nextval('order_inv_seq'), $2, $3, $4, $5, $6, 'pending', $7) returning id, inv_id::text`,
-    [nid(), userId, plan.id, savedKey, kind, Number(plan.price_rub), !xuiConfigured()],
+    [nid(), userId, plan.id, savedKey, kind, Number(plan.price_rub), false],
   );
-  return { ok: true, id: rows[0].id, demo: !xuiConfigured() };
+  return { ok: true, id: rows[0].id, demo: false };
 }
 
 async function getOrderForUser(orderId, userId) {
@@ -919,19 +919,19 @@ async function fulfillDemo(orderId, userId) {
   const found = await getOrderForUser(orderId, userId);
   if (!found) return { error: "Счёт не найден", status: 404 };
   if (found.order.status === "paid") return { ok: true };
-  let demo = found.order.demo;
-  if (xuiConfigured()) {
-    demo = false;
-    if (found.order.demo) await sql("update orders set demo = false where id = $1 and status = 'pending'", [found.order.id]);
+  if (!xuiConfigured()) {
+    return { error: "Панель 3x-ui не подключена. В .env нужны отдельные строки XUI_BASE_URL, XUI_API_TOKEN и XUI_INBOUND_ID. Для самоподписанного сертификата добавьте XUI_INSECURE_TLS=1 и перезапустите сайт.", status: 503 };
   }
+  if (found.order.demo) await sql("update orders set demo = false where id = $1 and status = 'pending'", [found.order.id]);
   try {
-    await provision(found.order.inv_id, demo);
+    await provision(found.order.inv_id, false);
   } catch (error) {
     if (error instanceof Error && error.message === "Счёт уже обрабатывается") {
       return { error: "Счёт уже обрабатывается. Откройте кабинет через несколько секунд.", status: 409 };
     }
     await rememberError(found.order.inv_id, error);
-    return { error: "Не удалось выдать ключ. Попробуйте ещё раз.", status: 502 };
+    const message = error instanceof Error ? error.message : "Не удалось выдать ключ";
+    return { error: message, status: 502 };
   }
   return { ok: true };
 }
@@ -1226,7 +1226,7 @@ function orderJson(order, key) {
 
 function shopNotice() {
   if (liveCheckout()) return "";
-  if (xuiConfigured()) return "Platega ещё не подключена, деньги не списываются. Тестовая кнопка создаёт настоящий ключ в панели 3x-ui.";
+  if (xuiConfigured()) return "Platega ещё не подключена, деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui.";
   const gaps = [];
   if (!plategaConfigured()) gaps.push("в .env не заданы данные Platega");
   if (!env("XUI_BASE_URL") || !(env("XUI_API_TOKEN") || (env("XUI_USERNAME") && env("XUI_PASSWORD")))) gaps.push("не задан адрес панели или токен");
