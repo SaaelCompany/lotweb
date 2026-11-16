@@ -35,6 +35,8 @@ if (process.argv[2] === "setup") {
       file,
       `# Этот файл лежит рядом с server.mjs и в git не попадает.
 PORT=3000
+# Публичный адрес без порта. Пустая строка — install.sh возьмёт IP сервера и домен nip.io.
+SITE_HOST=
 # DATABASE_URL=postgres://lot:password@127.0.0.1:5432/lot
 
 PLATEGA_MERCHANT_ID=
@@ -71,6 +73,7 @@ SMTP_FROM=
 loadEnv(join(root, ".env"));
 
 const PORT = Number(process.env.PORT || 3000);
+const BIND = process.env.BIND === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
 const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
 const DAY = 86400000;
 const SESSION = "lot_session";
@@ -1143,10 +1146,14 @@ function readCookies(req) {
   return out;
 }
 
+function behindProxy() {
+  return process.env.BIND === "127.0.0.1";
+}
+
 function requestOrigin(req) {
-  const forwarded = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  const forwarded = behindProxy() ? String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() : "";
   const proto = forwarded || "http";
-  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+  const host = String((behindProxy() ? req.headers["x-forwarded-host"] : "") || req.headers.host || "").split(",")[0].trim();
   if ((proto !== "http" && proto !== "https") || !/^[a-zA-Z0-9.:-]+$/.test(host)) return `http://${req.headers.host}`;
   return `${proto}://${host}`;
 }
@@ -1161,8 +1168,8 @@ function originBlocked(req) {
 }
 
 function clientIp(req) {
-  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
-  return (forwarded || String(req.headers["x-real-ip"] || "local")).slice(0, 64);
+  const forwarded = behindProxy() ? String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() : "";
+  return (forwarded || String(req.socket?.remoteAddress || "local")).slice(0, 64);
 }
 
 function cookieHeader(req, token) {
@@ -1756,4 +1763,4 @@ const server = http.createServer((req, res) => {
 
 await applyPostgresSchema();
 if (!databaseUrl) await localDb();
-server.listen(PORT, "0.0.0.0");
+server.listen(PORT, BIND);
