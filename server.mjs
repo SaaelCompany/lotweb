@@ -134,6 +134,7 @@ const SCHEMA = [
     panel_api text not null default 'demo',
     created_at timestamptz not null default now()
   )`,
+  `alter table vpn_keys add column if not exists enabled boolean not null default true`,
   `create index if not exists vpn_keys_user_idx on vpn_keys (user_id)`,
   `create sequence if not exists order_inv_seq start with 1000`,
   `create table if not exists orders (
@@ -575,6 +576,7 @@ function present(client, email, inboundId, panelApi, shareLink) {
     inboundId,
     panelApi,
     comment: typeof client.comment === "string" ? client.comment : "",
+    enable: client.enable !== false,
     raw: client,
   };
 }
@@ -594,20 +596,87 @@ async function findClient(email) {
       return present(client, email, Number.isInteger(inbound) ? inbound : null, "clients", share?.value);
     } else if (modern.json?.success === false) return null;
   }
+  const legacy = await legacyInbound();
+  if (!legacy) return null;
+  const client = legacy.clients.find((item) => item.email === email);
+  return client ? present(client, email, legacy.inboundId, "inbounds") : null;
+}
+
+function dropPanelCache() {
+  delete panelMemory.__lotXuiInboundCache;
+}
+
+async function legacyInbound() {
+  const cached = panelMemory.__lotXuiInboundCache;
+  if (cached && cached.until > Date.now()) return cached.value;
   const inboundId = inboundIds()[0];
   const result = await panel(`/panel/api/inbounds/get/${inboundId}`);
-  if (result.status === 404 || result.json?.success !== true) return null;
-  const settingsRaw = result.json.obj?.settings;
-  if (typeof settingsRaw !== "string") return null;
-  let settings;
-  try { settings = JSON.parse(settingsRaw); } catch { return null; }
-  const client = settings.clients?.find((item) => item.email === email);
-  return client ? present(client, email, inboundId, "inbounds") : null;
+  let value = null;
+  if (result.status !== 404 && result.json?.success === true && typeof result.json.obj?.settings === "string") {
+    try {
+      const settings = JSON.parse(result.json.obj.settings);
+      value = { inboundId, clients: Array.isArray(settings.clients) ? settings.clients : [] };
+    } catch {
+      value = null;
+    }
+  }
+  panelMemory.__lotXuiInboundCache = { until: Date.now() + 4000, value };
+  return value;
+}
+
+function panelName(email, index) {
+  const normalized = String(email || "").trim().toLowerCase();
+  const at = normalized.lastIndexOf("@");
+  const local = (at > 0 ? normalized.slice(0, at) : "user").replace(/[^a-z0-9_.+-]/g, "").slice(0, 40) || "user";
+  const domain = (at > 0 ? normalized.slice(at + 1) : "mail.local").replace(/[^a-z0-9.-]/g, "").slice(0, 48) || "mail.local";
+  return index === 1 ? `${local}@${domain}` : `${local}+${index}@${domain}`;
+}
+
+function ownsPanelName(email, name) {
+  for (let index = 1; index <= 40; index += 1) if (panelName(email, index) === name) return true;
+  return false;
+}
+
+function namesFor(email, keys) {
+  const assigned = new Map();
+  const used = new Set();
+  for (const key of keys) {
+    if (ownsPanelName(email, key.client_email)) {
+      assigned.set(key.id, key.client_email);
+      used.add(key.client_email);
+    }
+  }
+  for (const key of keys) {
+    if (assigned.has(key.id)) continue;
+    for (let index = 1; index <= 40; index += 1) {
+      const name = panelName(email, index);
+      if (used.has(name)) continue;
+      used.add(name);
+      assigned.set(key.id, name);
+      break;
+    }
+  }
+  return assigned;
+}
+
+async function freshClientEmail(userEmail) {
+  const rows = await sql("select client_email from vpn_keys");
+  const taken = new Set(rows.map((row) => String(row.client_email || "")));
+  for (let index = 1; index <= 40; index += 1) {
+    const name = panelName(userEmail, index);
+    if (taken.has(name)) continue;
+    if (xuiConfigured() && (await findClient(name))) continue;
+    return name;
+  }
+  throw new Error("Не удалось подобрать свободное имя ключа по этой почте");
 }
 
 async function issueClient(input) {
   const existing = await findClient(input.email);
-  if (existing) return existing;
+  if (existing) {
+    if (!input.reuse) throw new Error("В панели уже есть ключ с таким именем");
+    return existing;
+  }
   const flow = xuiFlow();
   const payload = {
     email: input.email,
@@ -628,6 +697,7 @@ async function issueClient(input) {
     });
     if (modern.status !== 404) {
       assertOk(modern, "Не удалось создать ключ в панели");
+      dropPanelCache();
       const created = await findClient(input.email);
       if (!created) throw new Error("Панель не вернула созданный ключ");
       return created;
@@ -643,6 +713,7 @@ async function issueClient(input) {
     }).toString(),
   });
   assertOk(legacy, "Не удалось создать ключ в панели");
+  dropPanelCache();
   const created = await findClient(input.email);
   if (!created) throw new Error("Панель не вернула созданный ключ");
   return created;
@@ -656,28 +727,24 @@ function editable(raw, overrides) {
   return { ...body, ...overrides };
 }
 
-async function extendClientTo(input) {
-  const current = await findClient(input.email);
-  if (!current) throw new Error("Ключ не найден в панели");
-  if (current.expiresAtMs + 5000 >= input.expiryTime) return current;
-  const totalBytes = input.addGb <= 0 ? 0 : (Number(current.raw.totalGB) || 0) + input.addGb * 1024 * 1024 * 1024;
+async function updateClient(current, overrides) {
   const next = editable(current.raw, {
     id: current.uuid,
-    email: input.email,
+    email: current.email,
     subId: current.subId,
-    expiryTime: input.expiryTime,
-    totalGB: totalBytes,
-    enable: true,
-    comment: input.comment,
+    expiryTime: current.expiresAtMs,
+    enable: current.enable !== false,
+    ...overrides,
   });
   if (current.panelApi === "clients" && !panelMemory.__lotXuiLegacy) {
-    const modern = await panel(`/panel/api/clients/update/${encodeURIComponent(input.email)}`, {
+    const modern = await panel(`/panel/api/clients/update/${encodeURIComponent(current.email)}`, {
       method: "POST",
       body: JSON.stringify(next),
     });
     if (modern.status !== 404) {
-      assertOk(modern, "Не удалось продлить ключ в панели");
-      return (await findClient(input.email)) ?? { ...current, expiresAtMs: input.expiryTime };
+      assertOk(modern, "Не удалось обновить ключ в панели");
+      dropPanelCache();
+      return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, current.panelApi, current.shareLink);
     }
     panelMemory.__lotXuiLegacy = true;
   }
@@ -689,8 +756,23 @@ async function extendClientTo(input) {
       settings: JSON.stringify({ clients: [next] }),
     }).toString(),
   });
-  assertOk(legacy, "Не удалось продлить ключ в панели");
-  return (await findClient(input.email)) ?? { ...current, expiresAtMs: input.expiryTime };
+  assertOk(legacy, "Не удалось обновить ключ в панели");
+  dropPanelCache();
+  return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, "inbounds", current.shareLink);
+}
+
+async function extendClientTo(input) {
+  const current = await findClient(input.email);
+  if (!current) throw new Error("Ключ не найден в панели");
+  if (current.expiresAtMs + 5000 >= input.expiryTime && current.enable !== false) return current;
+  const totalBytes = input.addGb <= 0 ? 0 : (Number(current.raw.totalGB) || 0) + input.addGb * 1024 * 1024 * 1024;
+  return updateClient(current, {
+    email: input.email,
+    expiryTime: input.expiryTime,
+    totalGB: totalBytes,
+    enable: true,
+    comment: input.comment,
+  });
 }
 
 const ORDER_SELECT = `select orders.id, orders.inv_id::text, orders.user_id, orders.plan_id, orders.key_id, orders.kind,
@@ -717,6 +799,7 @@ function normalizeKey(row) {
     created_at: toIso(row.created_at),
     demo: truthy(row.demo),
     traffic_gb: Number(row.traffic_gb),
+    enabled: row.enabled === undefined ? true : truthy(row.enabled),
   };
 }
 
@@ -774,10 +857,77 @@ async function savePlan(input) {
 
 async function listKeys(userId) {
   const rows = await sql(
-    "select id, label, expires_at, subscription_url, share_link, demo, traffic_gb, created_at from vpn_keys where user_id = $1 order by created_at",
+    `select id, label, expires_at, subscription_url, share_link, demo, traffic_gb, created_at,
+            client_email, client_uuid, sub_id, panel_api, inbound_id, enabled
+     from vpn_keys where user_id = $1 order by created_at`,
     [userId],
   );
-  return rows.map(normalizeKey);
+  const keys = rows.map(normalizeKey);
+  const users = await sql("select email from users where id = $1", [userId]);
+  const plan = namesFor(users[0]?.email || "", keys);
+  const synced = [];
+  for (const key of keys) synced.push(await syncKey(key, plan.get(key.id)));
+  return synced;
+}
+
+function keyState(expiresAtMs, enabled, unlimited) {
+  if (enabled === false) return "disabled";
+  if (!unlimited && expiresAtMs > 0 && expiresAtMs <= Date.now()) return "expired";
+  return "active";
+}
+
+function storedView(key, stale = false) {
+  const expiresAtMs = new Date(key.expires_at).getTime();
+  const status = keyState(expiresAtMs, key.enabled !== false, false);
+  return { ...key, status: stale ? "stale" : status, active: status === "active", unlimited: false };
+}
+
+async function syncKey(key, wantedName) {
+  if (!key) return null;
+  if (key.demo || key.panel_api === "demo" || !xuiConfigured()) return storedView(key);
+  try {
+    let client = await findClient(key.client_email);
+    if (!client) return { ...key, status: "missing", active: false, unlimited: false };
+    if (wantedName && wantedName !== key.client_email) {
+      const occupied = await findClient(wantedName);
+      if (!occupied || occupied.uuid === client.uuid) {
+        const previousUuid = client.uuid;
+        await updateClient(client, { email: wantedName });
+        const confirmed = await findClient(wantedName);
+        if (confirmed && confirmed.uuid === previousUuid) {
+          client = confirmed;
+          key = { ...key, client_email: confirmed.email, label: confirmed.email };
+          await sql("update vpn_keys set client_email = $2, label = $2 where id = $1", [key.id, confirmed.email]);
+        } else {
+          const still = await findClient(key.client_email);
+          if (still) client = still;
+        }
+      }
+    }
+    const unlimited = !(Number(client.expiresAtMs) > 0);
+    const enabled = client.enable !== false;
+    const expiresAt = unlimited ? key.expires_at : new Date(client.expiresAtMs).toISOString();
+    const subscription = client.subscriptionUrl || key.subscription_url;
+    const share = client.shareLink || "";
+    await sql(
+      `update vpn_keys set expires_at = $2, subscription_url = $3, share_link = $4, sub_id = $5, client_uuid = $6,
+       enabled = $7, inbound_id = $8, label = $9 where id = $1`,
+      [key.id, expiresAt, subscription, share, client.subId || key.sub_id, client.uuid || key.client_uuid, enabled, client.inboundId ?? null, key.label],
+    );
+    const status = keyState(client.expiresAtMs, enabled, unlimited);
+    return {
+      ...key,
+      expires_at: expiresAt,
+      subscription_url: subscription,
+      share_link: share,
+      enabled,
+      status,
+      active: status === "active",
+      unlimited,
+    };
+  } catch {
+    return storedView(key, true);
+  }
 }
 
 async function createOrder({ userId, planId, kind, keyId }) {
@@ -810,7 +960,7 @@ async function getOrderForUser(orderId, userId) {
   const rows = await sql(`${ORDER_SELECT} where orders.id = $1 and orders.user_id = $2`, [orderId, userId]);
   if (!rows[0]) return null;
   const order = normalizeOrder(rows[0]);
-  const key = order.key_id ? await keyById(order.key_id, userId) : null;
+  const key = order.key_id ? await syncedKey(order.key_id, userId) : null;
   return { order, key };
 }
 
@@ -863,22 +1013,21 @@ async function startPlatega(order, user, origin) {
   return { redirect };
 }
 
-async function keyById(id, userId) {
+async function loadKey(id, userId) {
   const rows = await sql(
-    "select id, label, expires_at, subscription_url, share_link, demo, traffic_gb, created_at from vpn_keys where id = $1 and user_id = $2",
+    `select id, label, expires_at, subscription_url, share_link, traffic_gb, client_email, client_uuid, sub_id, panel_api, inbound_id, demo, enabled, created_at
+     from vpn_keys where id = $1 and user_id = $2`,
     [id, userId],
   );
   return rows[0] ? normalizeKey(rows[0]) : null;
 }
 
-async function loadKey(id, userId) {
-  const rows = await sql(
-    `select id, label, expires_at, subscription_url, share_link, traffic_gb, client_email, client_uuid, sub_id, panel_api, inbound_id
-     from vpn_keys where id = $1 and user_id = $2`,
-    [id, userId],
-  );
-  if (!rows[0]) return null;
-  return { ...rows[0], expires_at: toIso(rows[0].expires_at), traffic_gb: Number(rows[0].traffic_gb) };
+async function syncedKey(id, userId) {
+  const key = await loadKey(id, userId);
+  if (!key) return null;
+  const users = await sql("select email from users where id = $1", [userId]);
+  const siblings = await sql("select id, client_email from vpn_keys where user_id = $1 order by created_at", [userId]);
+  return syncKey(key, namesFor(users[0]?.email || "", siblings).get(key.id));
 }
 
 function requireLink(url) {
@@ -1017,7 +1166,9 @@ async function applyClaimed(invId, demo) {
   if (demo !== order.demo) throw new Error("order mode mismatch");
   const traffic = await sql("select traffic_gb from plans where id = $1", [order.plan_id]);
   const plan = { days: order.plan_days, trafficGb: Number(traffic[0]?.traffic_gb ?? 0) };
-  const comment = `inv:${order.inv_id}`;
+  const owners = await sql("select email from users where id = $1", [order.user_id]);
+  const ownerEmail = owners[0]?.email || "";
+  const comment = `${ownerEmail} inv:${order.inv_id}`.trim().slice(0, 120);
   if (order.kind === "renew") {
     if (!order.key_id) throw new Error("renew without key");
     const stored = await loadKey(order.key_id, order.user_id);
@@ -1050,7 +1201,7 @@ async function applyClaimed(invId, demo) {
     return { email, label: stored.label, expires: formatDate(new Date(issued.expiresAtMs)), subscriptionUrl: issued.subscriptionUrl, renewed: true, demo };
   }
   const target = await rememberExpiry(order, 0, plan.days);
-  const clientEmail = `lot${order.inv_id}`;
+  const clientEmail = await freshClientEmail(ownerEmail);
   const issued = demo
     ? demoIssue(clientEmail, target)
     : await issueClient({
@@ -1065,8 +1216,7 @@ async function applyClaimed(invId, demo) {
   const created = await transaction(async (query) => {
     const status = await query("select status from orders where id = $1 for update", [order.id]);
     if (status[0]?.status === "paid") return null;
-    const count = await query("select count(*)::text as count from vpn_keys where user_id = $1", [order.user_id]);
-    const label = `Ключ ${Number(count[0]?.count ?? 0) + 1}`;
+    const label = issued.email;
     const keyId = nid();
     await query(
       `insert into vpn_keys
@@ -1218,6 +1368,9 @@ function orderJson(order, key) {
           subscriptionUrl: key.subscription_url,
           shareLink: key.share_link,
           demo: key.demo,
+          active: key.active === true,
+          status: key.status || (key.active ? "active" : "expired"),
+          unlimited: key.unlimited === true,
         }
       : null,
   };
@@ -1239,7 +1392,17 @@ function planJson(plan) {
 }
 
 function keyJson(key) {
-  return { id: key.id, label: key.label, expiresAt: key.expires_at, subscriptionUrl: key.subscription_url, shareLink: key.share_link || "", demo: key.demo };
+  return {
+    id: key.id,
+    label: key.label,
+    expiresAt: key.expires_at,
+    subscriptionUrl: key.subscription_url,
+    shareLink: key.share_link || "",
+    demo: key.demo,
+    active: key.active === true,
+    status: key.status || "expired",
+    unlimited: key.unlimited === true,
+  };
 }
 
 function sendPage(res) {
@@ -1322,7 +1485,7 @@ async function handle(req, res) {
 
   const user = await currentUser(req);
   if (req.method === "GET" && path === "/api/me") return json(res, { email: user?.email || "", admin: isAdmin(user) });
-  if (req.method === "GET" && path === "/api/shop") return json(res, { live: liveCheckout(), notice: shopNotice(), build: "real-key" });
+  if (req.method === "GET" && path === "/api/shop") return json(res, { live: liveCheckout(), notice: shopNotice(), build: "sync-mail" });
   if (req.method === "GET" && path === "/api/plans") return json(res, { plans: (await listPlans()).map(planJson) });
   if (req.method === "GET" && path === "/api/cabinet") {
     if (!user) return json(res, { error: "Войдите по почте" }, 401);

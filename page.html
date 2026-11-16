@@ -161,6 +161,25 @@
       return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(value);
     }
 
+    function accessText(key) {
+      if (!key) return "";
+      const until = when(key.expiresAt);
+      if (key.status === "missing") return "В панели этого ключа уже нет.";
+      if (key.status === "disabled") return key.unlimited ? "В панели ключ выключен." : `В панели ключ выключен. Срок до ${until}.`;
+      if (key.status === "stale") return `Панель не ответила. По сохранённым данным ${key.active ? "доступна" : "срок уже прошёл"} до ${until}.`;
+      if (key.status === "expired" || key.active === false) return `Срок кончился ${until}.`;
+      if (key.unlimited) return "Доступна, срок в панели не ограничен.";
+      return `Доступна до ${until}.`;
+    }
+
+    function accessPill(key) {
+      if (key.status === "stale") return ["pill warn", "нет связи"];
+      if (key.status === "disabled") return ["pill warn", "выключен"];
+      if (key.status === "missing") return ["pill warn", "нет в панели"];
+      if (key.status === "active" || key.active === true) return ["pill", "действует"];
+      return ["pill warn", "кончилась"];
+    }
+
     function when(value) {
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "";
@@ -311,11 +330,11 @@
       if (data.keys?.length) {
         document.getElementById("empty").hidden = true;
         data.keys.forEach((key) => {
-          const alive = new Date(key.expiresAt).getTime() > Date.now();
+          const pill = accessPill(key);
           const card = el("article", "key");
           const head = el("div", "key-head");
-          head.append(el("h3", "", key.label), el("span", alive ? "pill" : "pill warn", alive ? "действует" : "срок вышел"));
-          card.append(head, el("p", "muted", `до ${when(key.expiresAt)}`));
+          head.append(el("h3", "", key.label), el("span", pill[0], pill[1]));
+          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)));
           if (key.demo) card.append(el("p", "notice", "Образец. Панель 3x-ui не подключена, эта ссылка никуда не ведёт."));
           const row = el("div", "row");
           const copy = el("button", "ghost", "Скопировать подписку");
@@ -334,7 +353,7 @@
             intent.kind = "renew";
             intent.keyId = key.id;
             title.textContent = "Продлить ключ";
-            hint.textContent = "Дни прибавятся к текущему сроку, если он ещё не закончился.";
+            hint.textContent = "Дни прибавятся к сроку в панели, если он ещё не закончился.";
             document.getElementById("buy").scrollIntoView();
           };
           row.append(renew);
@@ -501,7 +520,7 @@
           setTimeout(tick, 2000);
           return;
         }
-        box.append(el("p", "", `${data.kind === "renew" ? "Ключ продлён" : "Ключ готов"} до ${when(data.key.expiresAt)}.`));
+        box.append(el("p", "", `${data.kind === "renew" ? "Ключ продлён" : "Ключ готов"}. ${accessText(data.key)}`));
         if (data.key.demo) box.append(el("p", "notice", "Это образец: панель 3x-ui не была подключена в момент оплаты."));
         const area = document.createElement("textarea");
         area.readOnly = true;
