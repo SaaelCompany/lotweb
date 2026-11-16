@@ -800,9 +800,9 @@ async function createOrder({ userId, planId, kind, keyId }) {
   const rows = await sql(
     `insert into orders (id, inv_id, user_id, plan_id, key_id, kind, amount_rub, status, demo)
      values ($1, nextval('order_inv_seq'), $2, $3, $4, $5, $6, 'pending', $7) returning id, inv_id::text`,
-    [nid(), userId, plan.id, savedKey, kind, Number(plan.price_rub), !liveCheckout()],
+    [nid(), userId, plan.id, savedKey, kind, Number(plan.price_rub), !xuiConfigured()],
   );
-  return { ok: true, id: rows[0].id, demo: !liveCheckout() };
+  return { ok: true, id: rows[0].id, demo: !xuiConfigured() };
 }
 
 async function getOrderForUser(orderId, userId) {
@@ -918,10 +918,14 @@ async function fulfillDemo(orderId, userId) {
   if (liveCheckout()) return { error: "Демо-оплата выключена: подключена Platega", status: 404 };
   const found = await getOrderForUser(orderId, userId);
   if (!found) return { error: "Счёт не найден", status: 404 };
-  if (!found.order.demo) return { error: "Этот счёт нельзя оплатить в демо-режиме", status: 400 };
   if (found.order.status === "paid") return { ok: true };
+  let demo = found.order.demo;
+  if (xuiConfigured()) {
+    demo = false;
+    if (found.order.demo) await sql("update orders set demo = false where id = $1 and status = 'pending'", [found.order.id]);
+  }
   try {
-    await provision(found.order.inv_id, true);
+    await provision(found.order.inv_id, demo);
   } catch (error) {
     if (error instanceof Error && error.message === "Счёт уже обрабатывается") {
       return { error: "Счёт уже обрабатывается. Откройте кабинет через несколько секунд.", status: 409 };
@@ -1204,6 +1208,7 @@ function orderJson(order, key) {
     amountRub: order.amount_rub,
     planTitle: order.plan_title,
     demo: order.demo,
+    practice: !liveCheckout(),
     lastError: order.last_error,
     key: key
       ? {
@@ -1221,6 +1226,7 @@ function orderJson(order, key) {
 
 function shopNotice() {
   if (liveCheckout()) return "";
+  if (xuiConfigured()) return "Platega ещё не подключена, деньги не списываются. Тестовая кнопка создаёт настоящий ключ в панели 3x-ui.";
   const gaps = [];
   if (!plategaConfigured()) gaps.push("в .env не заданы данные Platega");
   if (!env("XUI_BASE_URL") || !(env("XUI_API_TOKEN") || (env("XUI_USERNAME") && env("XUI_PASSWORD")))) gaps.push("не задан адрес панели или токен");

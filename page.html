@@ -122,7 +122,7 @@
     <div class="wrap section"><div class="card stack" style="max-width:440px">
       <p class="kicker" id="inv"></p><h1 id="title"></h1><p class="price" id="price"></p>
       <p class="muted" id="hint"></p>
-      <p class="notice" id="demo-note" hidden>Platega или панель ещё не подключены. Эта кнопка только показывает, как ключ появляется после оплаты. Деньги не списываются.</p>
+      <p class="notice" id="demo-note" hidden></p>
       <button id="pay" class="btn full" type="button"></button><p id="err" class="error"></p>
     </div></div>
   </template>
@@ -456,10 +456,16 @@
       const note = document.getElementById("demo-note");
       const button = document.getElementById("pay");
       const err = document.getElementById("err");
-      if (data.demo) {
-        hint.hidden = true;
-        note.hidden = false;
-        button.textContent = "Провести демо-оплату";
+      if (data.practice) {
+        if (data.demo) {
+          hint.hidden = true;
+          note.hidden = false;
+          note.textContent = "Панель 3x-ui не подключена. Деньги не списываются, ссылка будет образцом.";
+          button.textContent = "Провести демо-оплату";
+        } else {
+          hint.textContent = `Ключ VPN, ${data.planTitle}. Деньги не списываются, клиент создаётся в панели 3x-ui.`;
+          button.textContent = "Провести тестовую оплату";
+        }
         button.onclick = async () => {
           err.textContent = "";
           const result = await api(`/api/orders/${id}/demo-pay`, { method: "POST" });
