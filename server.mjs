@@ -1322,7 +1322,7 @@ async function handle(req, res) {
 
   const user = await currentUser(req);
   if (req.method === "GET" && path === "/api/me") return json(res, { email: user?.email || "", admin: isAdmin(user) });
-  if (req.method === "GET" && path === "/api/shop") return json(res, { live: liveCheckout(), notice: shopNotice() });
+  if (req.method === "GET" && path === "/api/shop") return json(res, { live: liveCheckout(), notice: shopNotice(), build: "real-key" });
   if (req.method === "GET" && path === "/api/plans") return json(res, { plans: (await listPlans()).map(planJson) });
   if (req.method === "GET" && path === "/api/cabinet") {
     if (!user) return json(res, { error: "Войдите по почте" }, 401);

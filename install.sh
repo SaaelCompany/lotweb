@@ -91,11 +91,31 @@ EOF
 }
 
 if [[ "${1:-}" == "start" ]]; then
+  echo "Папка запуска: $(pwd)"
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Коммит: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
+  fi
+  if grep -q "настоящего клиента" server.mjs; then
+    echo "В server.mjs есть выдача настоящего ключа"
+  else
+    echo "server.mjs старый: строки про настоящего клиента нет"
+  fi
   if [[ -f /etc/systemd/system/lotweb.service ]] && command -v systemctl >/dev/null 2>&1 && [[ "$(id -u)" -eq 0 ]]; then
+    bind=""
     if setup_https; then
-      write_unit 127.0.0.1
+      bind="127.0.0.1"
     fi
-    systemctl restart lotweb
+    write_unit "$bind"
+    systemctl stop lotweb || true
+    if command -v fuser >/dev/null 2>&1; then
+      fuser -k 3000/tcp >/dev/null 2>&1 || true
+    fi
+    sleep 0.4
+    systemctl start lotweb
+    sleep 1
+    echo "Ответ сайта:"
+    curl -fsS http://127.0.0.1:3000/api/shop || echo "Сайт на порту 3000 не ответил"
+    echo
     systemctl status lotweb --no-pager
     exit 0
   fi
