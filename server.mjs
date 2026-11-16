@@ -37,12 +37,10 @@ if (process.argv[2] === "setup") {
 PORT=3000
 # DATABASE_URL=postgres://lot:password@127.0.0.1:5432/lot
 
-ROBOKASSA_MERCHANT_LOGIN=
-ROBOKASSA_PASSWORD1=
-ROBOKASSA_PASSWORD2=
-ROBOKASSA_HASH=md5
-# Единица переводит Робокассу в тестовые счета. Для списания денег строку уберите.
-# ROBOKASSA_TEST=1
+PLATEGA_MERCHANT_ID=
+PLATEGA_SECRET=
+# 2 СБП, 11 карты, 12 международные карты, 13 криптовалюта, 14 SberPay
+PLATEGA_PAYMENT_METHOD=2
 
 XUI_BASE_URL=
 XUI_API_TOKEN=
@@ -153,6 +151,7 @@ const SCHEMA = [
     constraint orders_kind_check check (kind in ('new', 'renew')),
     constraint orders_status_check check (status in ('pending', 'paid'))
   )`,
+  `alter table orders add column if not exists platega_id text`,
   `create index if not exists orders_user_idx on orders (user_id)`,
   `create table if not exists login_limits (
     id bigserial primary key,
@@ -169,8 +168,27 @@ function env(name) {
   return process.env[name]?.trim() ?? "";
 }
 
-function robokassaConfigured() {
-  return Boolean(env("ROBOKASSA_MERCHANT_LOGIN") && env("ROBOKASSA_PASSWORD1") && env("ROBOKASSA_PASSWORD2"));
+function plategaConfigured() {
+  return Boolean(env("PLATEGA_MERCHANT_ID") && env("PLATEGA_SECRET"));
+}
+
+function plategaMethod() {
+  const value = Number(env("PLATEGA_PAYMENT_METHOD") || "2");
+  return [2, 3, 11, 12, 13, 14].includes(value) ? value : 2;
+}
+
+function plategaEndpoint() {
+  const fallback = "https://app.platega.io/transaction/process";
+  const base = env("PLATEGA_API_BASE");
+  if (!base) return fallback;
+  try {
+    const url = new URL(base);
+    if (url.protocol === "http:" && url.hostname === "127.0.0.1") return `${url.origin}/transaction/process`;
+    if (url.protocol === "https:" && /(^|\.)platega\.io$/.test(url.hostname)) return `${url.origin}/transaction/process`;
+  } catch {
+    return fallback;
+  }
+  return fallback;
 }
 
 function inboundIds() {
@@ -194,12 +212,7 @@ function isAdmin(user) {
 }
 
 function liveCheckout() {
-  return robokassaConfigured() && xuiConfigured();
-}
-
-function hashName() {
-  const value = env("ROBOKASSA_HASH").toLowerCase();
-  return value === "sha256" || value === "sha384" || value === "sha512" || value === "md5" ? value : "md5";
+  return plategaConfigured() && xuiConfigured();
 }
 
 function xuiFlow() {
@@ -322,33 +335,10 @@ function nextQuotaBytes(currentBytes, addGb) {
   return (Number.isFinite(currentBytes) ? currentBytes : 0) + addGb * 1024 * 1024 * 1024;
 }
 
-function formatOutSum(rubles) {
-  if (!Number.isInteger(rubles) || rubles <= 0 || rubles > 1_000_000) throw new Error("bad amount");
-  return `${rubles}.00`;
-}
-
-function digest(value, algorithm) {
-  return createHash(algorithm).update(value).digest("hex").toUpperCase();
-}
-
-function appendShp(chunks, shp) {
-  for (const key of Object.keys(shp).sort()) chunks.push(`Shp_${key}=${shp[key]}`);
-}
-
-function paymentSignature({ login, outSum, invId, password, algorithm, shp }) {
-  const chunks = [login, outSum, invId, password];
-  appendShp(chunks, shp);
-  return digest(chunks.join(":"), algorithm);
-}
-
-function resultSignature({ outSum, invId, password, algorithm, shp }) {
-  const chunks = [outSum, invId, password];
-  appendShp(chunks, shp);
-  return digest(chunks.join(":"), algorithm);
-}
-
-function signaturesMatch(expected, received) {
-  return sameHash(expected.toUpperCase(), String(received || "").toUpperCase());
+function headerEquals(got, expected) {
+  const left = Buffer.from(String(got || ""));
+  const right = Buffer.from(expected);
+  return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
 }
 
 function amountsMatch(paid, expectedRubles) {
@@ -831,6 +821,49 @@ async function getOrderByInv(invId) {
   return rows[0] ? normalizeOrder(rows[0]) : null;
 }
 
+async function getOrderById(orderId) {
+  if (!ID_RE.test(orderId)) return null;
+  const rows = await sql(`${ORDER_SELECT} where orders.id = $1`, [orderId]);
+  return rows[0] ? normalizeOrder(rows[0]) : null;
+}
+
+function plategaRedirect(value) {
+  try {
+    const url = new URL(String(value || ""));
+    if (url.protocol !== "https:" || !/(^|\.)platega\.io$/.test(url.hostname)) return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+async function startPlatega(order, user, origin) {
+  const response = await fetch(plategaEndpoint(), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json",
+      "X-MerchantId": env("PLATEGA_MERCHANT_ID"),
+      "X-Secret": env("PLATEGA_SECRET"),
+    },
+    body: JSON.stringify({
+      paymentMethod: plategaMethod(),
+      paymentDetails: { amount: order.amount_rub, currency: "RUB" },
+      description: `Ключ VPN, ${order.plan_title}`.slice(0, 180),
+      return: `${origin}/pay/success?order=${order.id}`,
+      failedUrl: `${origin}/pay/fail?order=${order.id}`,
+      payload: order.id,
+      orderId: order.id,
+      metadata: { user_email: user.email, userId: user.id },
+    }),
+  });
+  const data = await response.json().catch(() => null);
+  const redirect = plategaRedirect(data?.redirect);
+  if (!response.ok || !redirect) return { error: "Platega не открыла оплату. Проверьте магазин и способ оплаты.", status: 502 };
+  await sql("update orders set platega_id = $2 where id = $1", [order.id, String(data.transactionId || "").slice(0, 80)]);
+  return { redirect };
+}
+
 async function keyById(id, userId) {
   const rows = await sql(
     "select id, label, expires_at, subscription_url, share_link, demo, traffic_gb, created_at from vpn_keys where id = $1 and user_id = $2",
@@ -883,7 +916,7 @@ async function rememberError(invId, error) {
 }
 
 async function fulfillDemo(orderId, userId) {
-  if (liveCheckout()) return { error: "Демо-оплата выключена: подключена боевая Робокасса", status: 404 };
+  if (liveCheckout()) return { error: "Демо-оплата выключена: подключена Platega", status: 404 };
   const found = await getOrderForUser(orderId, userId);
   if (!found) return { error: "Счёт не найден", status: 404 };
   if (!found.order.demo) return { error: "Этот счёт нельзя оплатить в демо-режиме", status: 400 };
@@ -932,7 +965,7 @@ async function listRecentOrders() {
 async function reissue(invId) {
   const order = await getOrderByInv(String(invId || ""));
   if (!order) return { error: "Счёт с таким номером не найден", status: 404 };
-  if (order.demo) return { error: "Это учебный счёт, Робокасса его не оплачивала", status: 400 };
+  if (order.demo) return { error: "Это учебный счёт, Platega его не оплачивала", status: 400 };
   if (order.status === "paid") return { ok: true };
   const result = await fulfillPaid(order.inv_id);
   if (result !== "ok") {
@@ -1252,9 +1285,9 @@ function layout(user, main, script = "") {
     <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">Лот</a><nav class="nav">${nav}<a class="ghost" href="/#tariffs">Цены</a></nav></div></header>
     <main>${main}</main>
     <footer class="site-footer"><div class="wrap">
-      <div><h2>Лот</h2><p>Ключи VPN для телефона и компьютера. Срок выбираете на сайте, оплата проходит через Робокассу, ключ остаётся в кабинете.</p></div>
+      <div><h2>Лот</h2><p>Ключи VPN для телефона и компьютера. Срок выбираете на сайте, оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
       <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p></div>
-      <div><h2>Если деньги списались</h2><p>Ключ создаётся после уведомления Робокассы. Откройте кабинет с той же почты: неоплаченный с точки зрения сайта счёт будет виден там, пока ключ не выдан.</p></div>
+      <div><h2>Если деньги списались</h2><p>Ключ создаётся после уведомления Platega. Откройте кабинет с той же почты: счёт будет виден там, пока ключ не выдан.</p></div>
     </div></footer>
     ${script ? `<script>${script}</script>` : ""}</body></html>`;
 }
@@ -1274,27 +1307,26 @@ function planCards(plans, user) {
 
 function homePage(user, plans) {
   const gaps = [];
-  if (!robokassaConfigured()) gaps.push("в .env не заданы логин и пароли Робокассы");
+  if (!plategaConfigured()) gaps.push("в .env не заданы данные Platega");
   if (!env("XUI_BASE_URL") || !(env("XUI_API_TOKEN") || (env("XUI_USERNAME") && env("XUI_PASSWORD")))) gaps.push("не задан адрес панели или токен");
   if (!inboundIds().length) gaps.push("пустой XUI_INBOUND_ID");
-  const test = env("ROBOKASSA_TEST") === "1";
   const banner = liveCheckout()
-    ? (test ? `<p class="notice">Робокасса в тестовом режиме: счёт создаётся, деньги не списываются. Уберите ROBOKASSA_TEST=1 и перезапустите сайт. В полях паролей должны быть боевые пароли, не тестовая пара.</p>` : "")
-    : `<p class="notice">Оплата пока учебная, деньги не уходят в Робокассу. ${esc(gaps.join("; "))}. После правки .env выполните ./install.sh start.</p>`;
+    ? ""
+    : `<p class="notice">Оплата пока учебная, деньги не уходят в Platega. ${esc(gaps.join("; "))}. После правки .env выполните ./install.sh start.</p>`;
   return layout(user, `<section class="hero-band"><div class="wrap hero-grid"><div class="hero">
       <p class="kicker">VPN</p><h1>Ключ после оплаты</h1>
-      <p class="lede">Выберите срок, введите почту и оплатите через Робокассу. Пароль и код не нужны. Новый ключ или продление старого появляется в кабинете.</p>
+      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Новый ключ или продление старого появляется в кабинете.</p>
       <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок</a><a class="ghost" href="${user ? "/cabinet" : "/login"}">Открыть кабинет</a></div>
     </div><aside class="card facts">
       <div class="fact"><strong>Вход по почте</strong><span class="muted">Кабинет открывается сразу, письмо с кодом не отправляется.</span></div>
-      <div class="fact"><strong>Оплата на сайте</strong><span class="muted">Сумму считает сервер и передаёт её в Робокассу.</span></div>
+      <div class="fact"><strong>Оплата на сайте</strong><span class="muted">Сумму считает сервер и передаёт её в Platega.</span></div>
       <div class="fact"><strong>Один ключ можно продлить</strong><span class="muted">Дни прибавляются к оставшемуся сроку, а не создают второй ключ.</span></div>
     </aside></div></section>
     <div class="wrap">${banner}
-    <section class="section" id="tariffs"><h2>Тарифы</h2><p class="muted">Цена на этой странице — та, которую спишет Робокасса.</p><div class="tariffs">${planCards(plans, user)}</div></section>
+    <section class="section" id="tariffs"><h2>Тарифы</h2><p class="muted">Цена на этой странице — та, которую спишет Platega.</p><div class="tariffs">${planCards(plans, user)}</div></section>
     <section class="section"><h2>Как получить ключ</h2><div class="steps">
       <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
-      <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Робокасса проводит платёж и сообщает об этом сайту.</p></article>
+      <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
       <article class="step-card"><p class="step-no">03</p><h3>Кабинет</h3><p class="muted">Ссылка подписки и QR появляются у этой почты.</p></article>
     </div></section></div>`);
 }
@@ -1375,7 +1407,7 @@ function cabinetPage(user, plans, keys, initialPlan, pending) {
     if (wanted) document.querySelector("[data-plan='" + wanted.replace(/[^a-z0-9]/g, "") + "']")?.scrollIntoView();
   `;
   const waiting = pending.map((order) => `<article class="order-line"><div><strong>Счёт ${esc(order.inv_id)}</strong> · ${esc(formatRub(order.amount_rub))} · ${esc(order.plan_title)}
-      <div class="muted">Ключ ещё не выдан.${order.last_error ? ` ${esc(order.last_error)}` : " Ждём подтверждение Робокассы. Если деньги уже списались, обновите страницу через минуту."}</div></div></article>`).join("");
+      <div class="muted">Ключ ещё не выдан.${order.last_error ? ` ${esc(order.last_error)}` : " Ждём подтверждение Platega. Если деньги уже списались, обновите страницу через минуту."}</div></div></article>`).join("");
   return layout(user, `<div class="wrap section"><p class="kicker">Кабинет</p><h1>${esc(user.email)}</h1>
     <div class="stack">${pending.length ? `<h2>Ожидают ключ</h2><div class="orders">${waiting}</div>` : ""}<h2>Ваши ключи</h2>${keys.length ? `<div class="keys">${cards}</div>` : `<p class="muted">Пока пусто. Ниже можно купить первый ключ.</p>`}
     <section class="card stack" id="buy"><h2 id="intent-title" style="margin:0">Новый ключ</h2><p id="intent-hint" class="muted" style="margin:0">Появится отдельный ключ. Старые останутся в списке.</p>
@@ -1428,7 +1460,7 @@ function adminPage(user, plans, orders) {
       <div class="muted">${order.status === "paid" ? "ключ выдан" : "ключ не выдан"}${order.demo ? " · учебный" : ""}${order.last_error ? ` · ${esc(order.last_error)}` : ""}</div></div>
       ${order.status !== "paid" && !order.demo ? `<button class="btn" type="button" data-reissue="${esc(order.inv_id)}">Выдать ключ</button>` : ""}</article>`).join("");
   return layout(user, `<div class="wrap section"><p class="kicker">Админ</p><h1>Тарифы и счета</h1>
-    <p class="muted">Если деньги в Робокассе списались, а ключа нет, нажмите «Выдать ключ» у нужного счёта. Result URL в кабинете Робокассы должен быть адресом этого сайта с путём /api/robokassa/result.</p>
+    <p class="muted">Если деньги в Platega списались, а ключа нет, нажмите «Выдать ключ» у нужного счёта. Callback URL в кабинете Platega: адрес этого сайта по HTTPS с путём /api/platega/callback.</p>
     <h2>Последние счета</h2><div class="orders">${bills || `<p class="muted">Счетов пока нет.</p>`}</div>
     <h2>Тарифы</h2>
     <div class="admin-list">${plans.map((plan) => row(plan, false)).join("")}</div>
@@ -1451,35 +1483,26 @@ function payPage(user, order) {
     `;
     return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:440px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
       <h1>${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
-      <p class="notice">Робокасса или панель ещё не подключены. Эта кнопка только показывает, как ключ появляется после оплаты. Деньги не списываются.</p>
+      <p class="notice">Platega или панель ещё не подключены. Эта кнопка только показывает, как ключ появляется после оплаты. Деньги не списываются.</p>
       <button id="demo-pay" class="btn full" type="button">Провести демо-оплату</button><p id="err" class="error"></p></div></div>`, script);
   }
-  const outSum = formatOutSum(order.amount_rub);
-  const description = `VPN ${order.plan_title}`.slice(0, 100);
-  const signature = paymentSignature({
-    login: env("ROBOKASSA_MERCHANT_LOGIN"),
-    outSum,
-    invId: order.inv_id,
-    password: env("ROBOKASSA_PASSWORD1"),
-    algorithm: hashName(),
-    shp: { order: order.id },
-  });
-  const test = env("ROBOKASSA_TEST") === "1";
+  const script = `
+    document.getElementById("pay").onclick = async () => {
+      const err = document.getElementById("err");
+      const button = document.getElementById("pay");
+      err.textContent = "";
+      button.disabled = true;
+      const response = await fetch("/api/orders/${order.id}/pay", { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+      button.disabled = false;
+      if (!response.ok || !data.redirect) { err.textContent = data.error || "Не удалось открыть оплату"; return; }
+      location.href = data.redirect;
+    };
+  `;
   return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:440px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
     <h1>${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
-    <p class="muted">${esc(description)}. После оплаты ключ появится в кабинете сам.</p>
-    ${test ? `<p class="notice">Включены тестовые платежи Робокассы.</p>` : ""}
-    <form action="https://auth.robokassa.ru/Merchant/Index.aspx" method="post" class="stack">
-      <input type="hidden" name="MerchantLogin" value="${esc(env("ROBOKASSA_MERCHANT_LOGIN"))}">
-      <input type="hidden" name="OutSum" value="${esc(outSum)}">
-      <input type="hidden" name="InvId" value="${esc(order.inv_id)}">
-      <input type="hidden" name="Description" value="${esc(description)}">
-      <input type="hidden" name="SignatureValue" value="${esc(signature)}">
-      <input type="hidden" name="Shp_order" value="${esc(order.id)}">
-      <input type="hidden" name="Email" value="${esc(user.email)}">
-      <input type="hidden" name="Culture" value="ru"><input type="hidden" name="Encoding" value="utf-8">
-      ${test ? `<input type="hidden" name="IsTest" value="1">` : ""}
-      <button class="btn full" type="submit">Оплатить через Робокассу</button></form></div></div>`);
+    <p class="muted">Ключ VPN, ${esc(order.plan_title)}. После оплаты он появится в кабинете.</p>
+    <button id="pay" class="btn full" type="button">Оплатить через Platega</button><p id="err" class="error"></p></div></div>`, script);
 }
 
 function successPage(user, orderId) {
@@ -1540,32 +1563,23 @@ async function handle(req, res) {
     send(res, 200, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#0b57d0"/><path d="M8 16h16M16 8v16" stroke="#fff" stroke-width="2"/></svg>`, { "content-type": "image/svg+xml" });
     return;
   }
-  if ((req.method === "POST" || req.method === "GET") && path === "/api/robokassa/result") {
-    if (!robokassaConfigured()) return send(res, 404, "shop is not configured", { "content-type": "text/plain; charset=utf-8" });
-    const params = new URLSearchParams(url.search);
-    if (req.method === "POST") {
-      const type = req.headers["content-type"] || "";
-      const raw = await readBody(req, 20000);
-      if (type.includes("application/json")) {
-        const body = JSON.parse(raw || "{}");
-        for (const [key, value] of Object.entries(body)) params.set(key, String(value));
-      } else {
-        for (const [key, value] of new URLSearchParams(raw)) params.set(key, value);
-      }
+  if (req.method === "POST" && path === "/api/platega/callback") {
+    if (!plategaConfigured()) return send(res, 404, "shop is not configured", { "content-type": "text/plain; charset=utf-8" });
+    if (!headerEquals(req.headers["x-merchantid"], env("PLATEGA_MERCHANT_ID")) || !headerEquals(req.headers["x-secret"], env("PLATEGA_SECRET"))) {
+      return send(res, 401, "unauthorized", { "content-type": "text/plain; charset=utf-8" });
     }
-    const outSum = params.get("OutSum") ?? "";
-    const invId = params.get("InvId") ?? "";
-    const shp = {};
-    for (const [key, value] of params.entries()) if (key.startsWith("Shp_") && key.length > 4) shp[key.slice(4)] = value;
-    const expected = resultSignature({ outSum, invId, password: env("ROBOKASSA_PASSWORD2"), algorithm: hashName(), shp });
-    if (!signaturesMatch(expected, params.get("SignatureValue") ?? "")) return send(res, 200, "bad sign", { "content-type": "text/plain; charset=utf-8" });
-    const order = await getOrderByInv(invId);
-    if (!order || order.demo || params.get("Shp_order") !== order.id) return send(res, 200, "order not found", { "content-type": "text/plain; charset=utf-8" });
-    if (!amountsMatch(outSum, order.amount_rub)) return send(res, 200, "bad sum", { "content-type": "text/plain; charset=utf-8" });
-    if (order.status === "paid") return send(res, 200, `OK${invId}`, { "content-type": "text/plain; charset=utf-8" });
-    const result = await fulfillPaid(invId);
+    let body = {};
+    try { body = JSON.parse((await readBody(req, 20000)) || "{}"); } catch { return send(res, 400, "bad json", { "content-type": "text/plain; charset=utf-8" }); }
+    if (body.status !== "CONFIRMED") return send(res, 200, "ignored", { "content-type": "text/plain; charset=utf-8" });
+    if (body.currency && body.currency !== "RUB") return send(res, 200, "bad currency", { "content-type": "text/plain; charset=utf-8" });
+    const order = await getOrderById(String(body.payload || ""));
+    if (!order || order.demo) return send(res, 200, "order not found", { "content-type": "text/plain; charset=utf-8" });
+    if (!amountsMatch(body.amount, order.amount_rub)) return send(res, 200, "bad sum", { "content-type": "text/plain; charset=utf-8" });
+    if (body.id) await sql("update orders set platega_id = $2 where id = $1 and (platega_id is null or platega_id = '')", [order.id, String(body.id).slice(0, 80)]);
+    if (order.status === "paid") return send(res, 200, "ok", { "content-type": "text/plain; charset=utf-8" });
+    const result = await fulfillPaid(order.inv_id);
     if (result !== "ok") return send(res, 500, "temporary error", { "content-type": "text/plain; charset=utf-8" });
-    return send(res, 200, `OK${invId}`, { "content-type": "text/plain; charset=utf-8" });
+    return send(res, 200, "ok", { "content-type": "text/plain; charset=utf-8" });
   }
   if (req.method === "GET" && path === "/auth/verify") {
     const result = await verifyMagic(url.searchParams.get("token") ?? "");
@@ -1693,6 +1707,17 @@ async function handle(req, res) {
     const created = await createOrder({ userId: user.id, planId: String(body.planId || ""), kind, keyId: typeof body.keyId === "string" ? body.keyId : "" });
     if (created.error) return json(res, { error: created.error }, created.status);
     return json(res, { id: created.id, demo: created.demo });
+  }
+  const payStart = path.match(/^\/api\/orders\/([a-f0-9]{32})\/pay$/);
+  if (req.method === "POST" && payStart) {
+    if (!user) return json(res, { error: "Войдите по почте" }, 401);
+    if (!liveCheckout()) return json(res, { error: "Platega ещё не подключена" }, 404);
+    const found = await getOrderForUser(payStart[1], user.id);
+    if (!found) return json(res, { error: "Счёт не найден" }, 404);
+    if (found.order.demo || found.order.status !== "pending") return json(res, { error: "Этот счёт уже нельзя оплатить" }, 400);
+    const started = await startPlatega(found.order, user, requestOrigin(req));
+    if (started.error) return json(res, { error: started.error }, started.status);
+    return json(res, { redirect: started.redirect });
   }
   const demoPay = path.match(/^\/api\/orders\/([a-f0-9]{32})\/demo-pay$/);
   if (req.method === "POST" && demoPay) {
