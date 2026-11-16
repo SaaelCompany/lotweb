@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Лот — ключи VPN</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
+  <style>
+    :root { --bg:#f7f7f8; --ink:#1a1a1a; --muted:#666; --line:#e4e4e7; --card:#fff; --clay:#b42318; --ok:#067647; --ok-bg:#e8f6ee; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:"Golos Text","Segoe UI",sans-serif; line-height:1.5; }
+    a { color:inherit; } button, input, textarea, select { font:inherit; color:inherit; }
+    h1,h2,h3 { margin:0; font-weight:650; letter-spacing:-.02em; }
+    h1 { font-size:34px; line-height:1.2; } h2 { font-size:18px; }
+    .wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
+    .topbar { background:#fff; border-bottom:1px solid var(--line); }
+    .topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; }
+    .logo { text-decoration:none; font-weight:700; font-size:18px; }
+    .nav { display:flex; align-items:center; gap:8px; }
+    .user { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
+    .hero-band { background:#fff; border-bottom:1px solid var(--line); }
+    .hero-grid { display:grid; grid-template-columns:1.25fr .75fr; gap:36px; align-items:center; padding:64px 0; }
+    .hero h1 { font-size:48px; max-width:11em; } .lede { margin:12px 0 0; max-width:520px; color:var(--muted); font-size:17px; }
+    .hero-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+    .facts { display:grid; gap:16px; } .fact strong { display:block; margin-bottom:2px; }
+    .section { padding:36px 0 12px; }
+    .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
+    .step-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
+    .step-no { margin:0 0 8px; color:var(--muted); font-size:13px; }
+    .site-footer { background:#161616; color:#c8c8c8; margin-top:48px; }
+    .site-footer .wrap { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:28px; padding:36px 0 42px; }
+    .site-footer h2 { color:#fff; font-size:16px; margin:0 0 8px; }
+    .site-footer a { color:#fff; }
+    .orders { display:grid; gap:8px; }
+    .order-line { display:flex; justify-content:space-between; gap:16px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+    .tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    .tariff, .card, .key, .plan, .admin-row { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+    .tariff { padding:20px; display:flex; flex-direction:column; gap:8px; }
+    .tariff.popular { border-color:#111; }
+    .badge { align-self:flex-start; border:1px solid var(--line); border-radius:999px; padding:2px 8px; font-size:12px; color:var(--muted); }
+    .price { font-size:30px; font-weight:700; margin:4px 0; }
+    .muted { color:var(--muted); } .kicker { margin:0 0 6px; color:var(--muted); font-size:13px; }
+    .features { margin:0; padding:0; list-style:none; color:var(--muted); font-size:14px; display:grid; gap:4px; }
+    .btn, .ghost, .lime { border-radius:6px; padding:10px 14px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
+    .btn, .lime { background:#111; color:#fff; border:1px solid #111; }
+    .ghost { background:#fff; color:#111; border:1px solid #d4d4d8; } .full { width:100%; margin-top:auto; }
+    .notice { padding:12px 14px; background:#fff; border:1px solid #ead7a3; border-radius:8px; color:#6b4e12; }
+    .error { color:var(--clay); margin:0; min-height:1.2em; }
+    .stack { display:grid; gap:12px; } label { display:grid; gap:6px; font-size:13px; color:var(--muted); }
+    input, textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:6px; padding:10px 12px; }
+    textarea { min-height:72px; font-family:ui-monospace,monospace; font-size:13px; }
+    .keys { display:grid; gap:12px; } .key, .card { padding:18px; }
+    .key-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    .pill { border-radius:999px; padding:3px 8px; font-size:12px; background:var(--ok-bg); color:var(--ok); }
+    .pill.warn { background:#fdecea; color:var(--clay); }
+    .row { display:flex; flex-wrap:wrap; gap:8px; } .qr { width:140px; height:140px; border-radius:6px; background:#fff; border:1px solid var(--line); }
+    .plan { text-align:left; padding:14px; cursor:pointer; } .plan strong { display:block; font-size:20px; margin-top:4px; color:#111; }
+    .admin-list { display:grid; gap:12px; } .admin-row { padding:16px; display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; align-items:end; }
+    .admin-row .error { grid-column:1 / -1; }
+    .check { display:flex; align-items:center; gap:6px; white-space:nowrap; } .check input { width:auto; }
+    button:focus-visible, a:focus-visible, input:focus { outline:2px solid #111; outline-offset:2px; }
+    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1 { font-size:32px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">Лот</a><nav class="nav" id="nav"></nav></div></header>
+  <main id="view"></main>
+  <footer class="site-footer"><div class="wrap">
+    <div><h2>Лот</h2><p>Ключи VPN для телефона и компьютера. Срок выбираете на сайте, оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
+    <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p></div>
+    <div><h2>Если деньги списались</h2><p>Ключ создаётся после уведомления Platega. Откройте кабинет с той же почты: счёт будет виден там, пока ключ не выдан.</p></div>
+  </div></footer>
+
+  <template id="tpl-home">
+    <section class="hero-band"><div class="wrap hero-grid"><div class="hero">
+      <p class="kicker">VPN</p><h1>Ключ после оплаты</h1>
+      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Новый ключ или продление старого появляется в кабинете.</p>
+      <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок</a><a class="ghost" id="cabinet-link" href="/login">Открыть кабинет</a></div>
+    </div><aside class="card facts">
+      <div class="fact"><strong>Вход по почте</strong><span class="muted">Кабинет открывается сразу, письмо с кодом не отправляется.</span></div>
+      <div class="fact"><strong>Оплата на сайте</strong><span class="muted">Сумму считает сервер и передаёт её в Platega.</span></div>
+      <div class="fact"><strong>Один ключ можно продлить</strong><span class="muted">Дни прибавляются к оставшемуся сроку, а не создают второй ключ.</span></div>
+    </aside></div></section>
+    <div class="wrap">
+      <p class="notice" id="notice" hidden></p>
+      <section class="section" id="tariffs"><h2>Тарифы</h2><p class="muted">Цена на этой странице — та, которую спишет Platega.</p><div class="tariffs" id="tariff-list"></div></section>
+      <section class="section"><h2>Как получить ключ</h2><div class="steps">
+        <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
+        <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
+        <article class="step-card"><p class="step-no">03</p><h3>Кабинет</h3><p class="muted">Ссылка подписки и QR появляются у этой почты.</p></article>
+      </div></section>
+    </div>
+  </template>
+
+  <template id="tpl-login">
+    <div class="wrap section"><div class="card stack" style="max-width:420px"><p class="kicker">Вход</p><h1>Почта</h1>
+      <p class="muted">Пароль и код не нужны. Кабинет откроется сразу.</p>
+      <p class="error" id="link-error" hidden>Ссылка устарела или уже использована. Запросите новую.</p>
+      <form id="ask" class="stack"><label>Почта<input type="email" name="email" autocomplete="email" required placeholder="name@mail.ru"></label><button class="btn full" type="submit">Войти</button></form>
+      <p id="err" class="error"></p>
+    </div></div>
+  </template>
+
+  <template id="tpl-cabinet">
+    <div class="wrap section"><p class="kicker">Кабинет</p><h1 id="email"></h1>
+      <div class="stack">
+        <div id="pending-block" hidden><h2>Ожидают ключ</h2><div class="orders" id="pending"></div></div>
+        <h2>Ваши ключи</h2>
+        <p class="muted" id="empty">Пока пусто. Ниже можно купить первый ключ.</p>
+        <div class="keys" id="keys"></div>
+        <section class="card stack" id="buy"><h2 id="intent-title" style="margin:0">Новый ключ</h2><p id="intent-hint" class="muted" style="margin:0">Появится отдельный ключ. Старые останутся в списке.</p>
+          <button id="new-key" class="ghost" type="button">Создать новый, а не продлевать</button>
+          <div class="plans" id="plans"></div><p id="err" class="error"></p>
+        </section>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-pay">
+    <div class="wrap section"><div class="card stack" style="max-width:440px">
+      <p class="kicker" id="inv"></p><h1 id="title"></h1><p class="price" id="price"></p>
+      <p class="muted" id="hint"></p>
+      <p class="notice" id="demo-note" hidden></p>
+      <button id="pay" class="btn full" type="button"></button><p id="err" class="error"></p>
+    </div></div>
+  </template>
+
+  <template id="tpl-success">
+    <div class="wrap section"><div class="card stack" style="max-width:640px"><p class="kicker">Оплата</p><h1>Ключ</h1><div id="status"><p>Проверяем оплату…</p></div></div></div>
+  </template>
+
+  <template id="tpl-fail">
+    <div class="wrap section"><div class="card stack" style="max-width:560px"><p class="kicker">Оплата</p><h1>Платёж не прошёл</h1><p>Деньги не списаны, ключ не менялся. Можно вернуться в кабинет и создать счёт ещё раз.</p><a class="btn" href="/cabinet">В кабинет</a></div></div>
+  </template>
+
+  <template id="tpl-admin">
+    <div class="wrap section"><p class="kicker">Админ</p><h1>Тарифы и счета</h1>
+      <p class="muted">Если деньги в Platega списались, а ключа нет, нажмите «Выдать ключ» у нужного счёта. Callback URL в кабинете Platega: адрес этого сайта по HTTPS с путём /api/platega/callback.</p>
+      <div class="key-head"><h2>Последние счета</h2><button id="clear-bills" class="ghost" type="button">Очистить счета</button></div>
+      <p class="muted">Кнопка удаляет только список счетов. Тарифы, ключи в кабинетах и клиенты в панели остаются.</p>
+      <div class="orders" id="bills"></div>
+      <h2>Тарифы</h2><div class="admin-list" id="plan-list"></div>
+      <h2>Новый тариф</h2>
+      <form class="admin-row" id="create-plan"></form>
+    </div>
+  </template>
+
+  <template id="tpl-denied">
+    <div class="wrap section"><div class="card"><h1>Нет доступа</h1><p class="muted">Эта почта не указана в ADMIN_EMAIL. Добавьте её в .env и перезапустите сайт.</p></div></div>
+  </template>
+
+  <template id="tpl-missing">
+    <div class="wrap section"><div class="card"><h1>Страница не найдена</h1><a class="btn" href="/">На главную</a></div></div>
+  </template>
+
+  <script>
+    const view = document.getElementById("view");
+    const nav = document.getElementById("nav");
+
+    function rub(value) {
+      return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(value);
+    }
+
+    function accessText(key) {
+      if (!key) return "";
+      const until = when(key.expiresAt);
+      if (key.status === "missing") return "В панели этого ключа уже нет.";
+      if (key.status === "disabled") return key.unlimited ? "В панели ключ выключен." : `В панели ключ выключен. Срок до ${until}.`;
+      if (key.status === "stale") return `Панель не ответила. По сохранённым данным ${key.active ? "доступна" : "срок уже прошёл"} до ${until}.`;
+      if (key.status === "expired" || key.active === false) return `Срок кончился ${until}.`;
+      if (key.unlimited) return "Доступна, срок в панели не ограничен.";
+      return `Доступна до ${until}.`;
+    }
+
+    function accessPill(key) {
+      if (key.status === "stale") return ["pill warn", "нет связи"];
+      if (key.status === "disabled") return ["pill warn", "выключен"];
+      if (key.status === "missing") return ["pill warn", "нет в панели"];
+      if (key.status === "active" || key.active === true) return ["pill", "действует"];
+      return ["pill warn", "кончилась"];
+    }
+
+    function when(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+    }
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text != null) node.textContent = text;
+      return node;
+    }
+
+    function mount(id) {
+      view.replaceChildren(document.getElementById(id).content.cloneNode(true));
+    }
+
+    function safeNext(value) {
+      if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || value.includes("://")) return "/cabinet";
+      try {
+        const url = new URL(value, location.origin);
+        if (url.origin !== location.origin) return "/cabinet";
+        if (url.pathname === "/cabinet" || url.pathname.startsWith("/pay/")) return `${url.pathname}${url.search}`;
+      } catch { return "/cabinet"; }
+      return "/cabinet";
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, { cache: "no-store", ...options });
+      const data = await response.json().catch(() => ({}));
+      return { response, data };
+    }
+
+    async function copyText(value, button) {
+      try { await navigator.clipboard.writeText(value); }
+      catch {
+        const area = document.createElement("textarea");
+        area.value = value;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      const previous = button.textContent;
+      button.textContent = "Скопировано";
+      setTimeout(() => { button.textContent = previous; }, 1400);
+    }
+
+    function drawNav(me) {
+      nav.replaceChildren();
+      if (me.email) {
+        nav.append(el("span", "user", me.email));
+        if (me.admin) nav.append(Object.assign(el("a", "ghost", "Тарифы"), { href: "/admin" }));
+        nav.append(Object.assign(el("a", "ghost", "Кабинет"), { href: "/cabinet" }));
+        const out = el("button", "btn", "Выйти");
+        out.type = "button";
+        out.onclick = async () => {
+          await fetch("/api/auth/logout", { method: "POST" });
+          location.href = "/";
+        };
+        nav.append(out);
+      } else {
+        nav.append(Object.assign(el("a", "btn", "Войти"), { href: "/login" }));
+      }
+      nav.append(Object.assign(el("a", "ghost", "Цены"), { href: "/#tariffs" }));
+    }
+
+    function tariffCard(plan, index, total, href) {
+      const article = el("article", `tariff${total >= 3 && index === 1 ? " popular" : ""}`);
+      if (total >= 3 && index === 1) article.append(el("span", "badge", "Обычно берут"));
+      article.append(el("h3", "", plan.title), el("p", "price", rub(plan.priceRub)));
+      const list = el("ul", "features");
+      list.append(el("li", "", `${plan.days} дней`), el("li", "", plan.trafficGb > 0 ? `${plan.trafficGb} ГБ` : "Трафик без лимита"), el("li", "", "Продление того же ключа"));
+      const link = Object.assign(el("a", "btn full", "Купить"), { href });
+      article.append(list, link);
+      return article;
+    }
+
+    async function showHome(me) {
+      mount("tpl-home");
+      const shop = (await api("/api/shop")).data;
+      const plans = (await api("/api/plans")).data.plans || [];
+      const notice = document.getElementById("notice");
+      if (shop.notice) { notice.hidden = false; notice.textContent = shop.notice; }
+      document.getElementById("cabinet-link").href = me.email ? "/cabinet" : "/login";
+      const list = document.getElementById("tariff-list");
+      plans.forEach((plan, index) => {
+        const next = `/cabinet?plan=${encodeURIComponent(plan.id)}`;
+        list.append(tariffCard(plan, index, plans.length, me.email ? next : `/login?next=${encodeURIComponent(next)}`));
+      });
+      if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+    }
+
+    async function showLogin(me) {
+      const next = safeNext(new URLSearchParams(location.search).get("next") || "");
+      if (me.email) { location.href = next; return; }
+      mount("tpl-login");
+      if (new URLSearchParams(location.search).get("error") === "link") document.getElementById("link-error").hidden = false;
+      const ask = document.getElementById("ask");
+      const err = document.getElementById("err");
+      ask.onsubmit = async (event) => {
+        event.preventDefault();
+        err.textContent = "";
+        const { response, data } = await api("/api/auth/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: new FormData(ask).get("email"), next }) });
+        if (!response.ok) { err.textContent = data.error || "Не удалось войти"; return; }
+        location.href = data.next || "/cabinet";
+      };
+    }
+
+    function planButton(plan, intent, err) {
+      const button = el("button", "plan");
+      button.type = "button";
+      button.append(el("span", "", plan.title), el("strong", "", rub(plan.priceRub)), el("small", "", "Перейти к оплате"));
+      button.onclick = async () => {
+        err.textContent = "";
+        button.disabled = true;
+        const { response, data } = await api("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ planId: plan.id, kind: intent.kind, keyId: intent.keyId }) });
+        button.disabled = false;
+        if (!response.ok || !data.id) { err.textContent = data.error || "Не удалось создать счёт"; return; }
+        location.href = `/pay/${data.id}`;
+      };
+      return button;
+    }
+
+    async function showCabinet(me) {
+      if (!me.email) { location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`; return; }
+      const { response, data } = await api("/api/cabinet");
+      if (response.status === 401) { location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`; return; }
+      mount("tpl-cabinet");
+      document.getElementById("email").textContent = me.email;
+      const pending = document.getElementById("pending");
+      if (data.pending?.length) {
+        document.getElementById("pending-block").hidden = false;
+        data.pending.forEach((order) => {
+          const line = el("article", "order-line");
+          const box = el("div");
+          box.append(el("strong", "", `Счёт ${order.invId}`));
+          box.append(document.createTextNode(` · ${rub(order.amountRub)} · ${order.planTitle}`));
+          box.append(el("div", "muted", order.lastError ? `Ключ ещё не выдан. ${order.lastError}` : "Ключ ещё не выдан. Ждём подтверждение Platega. Если деньги уже списались, обновите страницу через минуту."));
+          line.append(box);
+          pending.append(line);
+        });
+      }
+      const keys = document.getElementById("keys");
+      const intent = { kind: "new", keyId: "" };
+      const title = document.getElementById("intent-title");
+      const hint = document.getElementById("intent-hint");
+      if (data.keys?.length) {
+        document.getElementById("empty").hidden = true;
+        data.keys.forEach((key) => {
+          const pill = accessPill(key);
+          const card = el("article", "key");
+          const head = el("div", "key-head");
+          head.append(el("h3", "", key.label), el("span", pill[0], pill[1]));
+          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)));
+          if (key.demo) card.append(el("p", "notice", "Образец. Панель 3x-ui не подключена, эта ссылка никуда не ведёт."));
+          const row = el("div", "row");
+          const copy = el("button", "ghost", "Скопировать подписку");
+          copy.type = "button";
+          copy.onclick = () => copyText(key.subscriptionUrl, copy);
+          row.append(copy);
+          if (key.shareLink) {
+            const share = el("button", "ghost", "Скопировать ссылку");
+            share.type = "button";
+            share.onclick = () => copyText(key.shareLink, share);
+            row.append(share);
+          }
+          const renew = el("button", "btn", "Продлить");
+          renew.type = "button";
+          renew.onclick = () => {
+            intent.kind = "renew";
+            intent.keyId = key.id;
+            title.textContent = "Продлить ключ";
+            hint.textContent = "Дни прибавятся к сроку в панели, если он ещё не закончился.";
+            document.getElementById("buy").scrollIntoView();
+          };
+          row.append(renew);
+          const img = el("img", "qr");
+          img.alt = "";
+          img.src = `/api/keys/${key.id}/qr`;
+          card.append(row, img);
+          keys.append(card);
+        });
+      }
+      const err = document.getElementById("err");
+      document.getElementById("new-key").onclick = () => {
+        intent.kind = "new";
+        intent.keyId = "";
+        title.textContent = "Новый ключ";
+        hint.textContent = "Появится отдельный ключ. Старые останутся в списке.";
+      };
+      const plans = document.getElementById("plans");
+      (data.plans || []).forEach((plan) => plans.append(planButton(plan, intent, err)));
+      const wanted = (new URLSearchParams(location.search).get("plan") || "").replace(/[^a-z0-9]/g, "");
+      const match = (data.plans || []).findIndex((plan) => plan.id === wanted);
+      if (match >= 0) plans.children[match]?.scrollIntoView();
+    }
+
+    function field(name, label, value, extra) {
+      const wrap = el("label", "", label);
+      const input = document.createElement("input");
+      input.name = name;
+      input.value = value ?? "";
+      extra?.(input);
+      wrap.append(input);
+      return wrap;
+    }
+
+    function planForm(plan, create) {
+      const form = create ? document.getElementById("create-plan") : el("form", "admin-row");
+      form.append(
+        field("id", "Код", plan.id, (input) => { if (!create) input.readOnly = true; else { input.required = true; input.placeholder = "m12"; } }),
+        field("title", "Название", plan.title, (input) => { input.required = true; }),
+        field("days", "Дней", plan.days, (input) => { input.type = "number"; input.min = "1"; input.required = true; }),
+        field("priceRub", "Цена, ₽", plan.priceRub, (input) => { input.type = "number"; input.min = "1"; input.required = true; }),
+        field("trafficGb", "ГБ, 0 = без лимита", plan.trafficGb, (input) => { input.type = "number"; input.min = "0"; input.required = true; }),
+        field("sort", "Порядок", plan.sort, (input) => { input.type = "number"; input.min = "0"; input.required = true; }),
+      );
+      const check = el("label", "check", "Показывать");
+      const box = document.createElement("input");
+      box.name = "active";
+      box.type = "checkbox";
+      box.checked = plan.active !== false;
+      check.prepend(box);
+      const button = el("button", "btn", create ? "Добавить" : "Сохранить");
+      button.type = "submit";
+      const err = el("p", "error");
+      form.append(check, button, err);
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        err.textContent = "";
+        const body = Object.fromEntries(new FormData(form).entries());
+        body.active = box.checked;
+        body.days = Number(body.days);
+        body.priceRub = Number(body.priceRub);
+        body.trafficGb = Number(body.trafficGb);
+        body.sort = Number(body.sort);
+        body.create = create;
+        const { response, data } = await api("/api/admin/plans", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        if (!response.ok) { err.textContent = data.error || "Не сохранилось"; return; }
+        location.reload();
+      };
+      return form;
+    }
+
+    async function showAdmin(me) {
+      if (!me.email) { location.href = "/login?next=/admin"; return; }
+      const { response, data } = await api("/api/admin");
+      if (response.status === 401) { location.href = "/login?next=/admin"; return; }
+      if (!response.ok) { mount("tpl-denied"); return; }
+      mount("tpl-admin");
+      document.getElementById("clear-bills").onclick = async () => {
+        if (!window.confirm("Удалить все счета из админки? Ключи и тарифы останутся.")) return;
+        const result = await api("/api/admin/orders/clear", { method: "POST" });
+        if (!result.response.ok) { window.alert(result.data.error || "Не удалось очистить счета"); return; }
+        location.reload();
+      };
+      const bills = document.getElementById("bills");
+      if (!data.orders?.length) bills.append(el("p", "muted", "Счетов пока нет."));
+      (data.orders || []).forEach((order) => {
+        const line = el("article", "order-line");
+        const box = el("div");
+        box.append(el("strong", "", `Счёт ${order.invId}`));
+        box.append(document.createTextNode(` · ${order.email} · ${order.planTitle} · ${rub(order.amountRub)}`));
+        const bits = [order.status === "paid" ? "ключ выдан" : "ключ не выдан"];
+        if (order.demo) bits.push("учебный");
+        if (order.lastError) bits.push(order.lastError);
+        box.append(el("div", "muted", bits.join(" · ")));
+        line.append(box);
+        if (order.status !== "paid" && !order.demo) {
+          const button = el("button", "btn", "Выдать ключ");
+          button.type = "button";
+          button.onclick = async () => {
+            button.disabled = true;
+            const result = await api("/api/admin/reissue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ invId: order.invId }) });
+            button.disabled = false;
+            if (!result.response.ok) { button.insertAdjacentText("afterend", ` ${result.data.error || "Не вышло"}`); return; }
+            location.reload();
+          };
+          line.append(button);
+        }
+        bills.append(line);
+      });
+      const list = document.getElementById("plan-list");
+      (data.plans || []).forEach((plan) => list.append(planForm(plan, false)));
+      planForm({ id: "", title: "", days: 30, priceRub: 249, trafficGb: 0, sort: 10, active: true }, true);
+    }
+
+    async function showPay(me, id) {
+      if (!me.email) { location.href = `/login?next=${encodeURIComponent(location.pathname)}`; return; }
+      const { response, data } = await api(`/api/orders/${id}`);
+      if (!response.ok) { location.href = "/cabinet"; return; }
+      if (data.status === "paid") { location.href = `/pay/success?order=${id}`; return; }
+      mount("tpl-pay");
+      document.getElementById("inv").textContent = `Счёт ${data.invId}`;
+      document.getElementById("title").textContent = data.kind === "renew" ? "Продление" : "Новый ключ";
+      document.getElementById("price").textContent = rub(data.amountRub);
+      const hint = document.getElementById("hint");
+      const note = document.getElementById("demo-note");
+      const button = document.getElementById("pay");
+      const err = document.getElementById("err");
+      if (data.practice) {
+        hint.textContent = `Ключ VPN, ${data.planTitle}. Деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui.`;
+        button.textContent = "Провести демо-оплату";
+        button.onclick = async () => {
+          err.textContent = "";
+          const result = await api(`/api/orders/${id}/demo-pay`, { method: "POST" });
+          if (!result.response.ok) { err.textContent = result.data.error || "Не вышло провести демо-оплату"; return; }
+          location.href = `/pay/success?order=${id}`;
+        };
+      } else {
+        hint.textContent = `Ключ VPN, ${data.planTitle}. После оплаты он появится в кабинете.`;
+        button.textContent = "Оплатить через Platega";
+        button.onclick = async () => {
+          err.textContent = "";
+          button.disabled = true;
+          const result = await api(`/api/orders/${id}/pay`, { method: "POST" });
+          button.disabled = false;
+          if (!result.response.ok || !result.data.redirect) { err.textContent = result.data.error || "Не удалось открыть оплату"; return; }
+          location.href = result.data.redirect;
+        };
+      }
+    }
+
+    async function showSuccess(me) {
+      if (!me.email) { location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`; return; }
+      const id = new URLSearchParams(location.search).get("order") || "";
+      mount("tpl-success");
+      const box = document.getElementById("status");
+      if (!/^[a-f0-9]{32}$/.test(id)) {
+        box.replaceChildren(el("h1", "", "Счёт не найден"), Object.assign(el("a", "btn", "В кабинет"), { href: "/cabinet" }));
+        return;
+      }
+      async function tick() {
+        const { response, data } = await api(`/api/orders/${id}`);
+        if (!response.ok) {
+          box.replaceChildren(el("h1", "", "Счёт не найден"), Object.assign(el("a", "btn", "В кабинет"), { href: "/cabinet" }));
+          return;
+        }
+        box.replaceChildren();
+        if (data.status !== "paid" || !data.key) {
+          box.append(el("p", "", "Платёж ещё не подтверждён. Страница обновится сама."));
+          if (data.lastError) box.append(el("p", "error", `Ключ пока не выдан: ${data.lastError}`));
+          setTimeout(tick, 2000);
+          return;
+        }
+        box.append(el("p", "", `${data.kind === "renew" ? "Ключ продлён" : "Ключ готов"}. ${accessText(data.key)}`));
+        if (data.key.demo) box.append(el("p", "notice", "Это образец: панель 3x-ui не была подключена в момент оплаты."));
+        const area = document.createElement("textarea");
+        area.readOnly = true;
+        area.value = data.key.subscriptionUrl;
+        const row = el("div", "row");
+        const copy = el("button", "ghost", "Скопировать подписку");
+        copy.type = "button";
+        copy.onclick = () => copyText(data.key.subscriptionUrl, copy);
+        row.append(copy, Object.assign(el("a", "btn", "Открыть кабинет"), { href: "/cabinet" }));
+        const img = el("img", "qr");
+        img.alt = "";
+        img.src = `/api/keys/${data.key.id}/qr`;
+        box.append(area, row, img);
+      }
+      tick();
+    }
+
+    async function open() {
+      const me = (await api("/api/me")).data || {};
+      drawNav(me);
+      const path = location.pathname;
+      const pay = path.match(/^\/pay\/([a-f0-9]{32})$/);
+      if (path === "/") return showHome(me);
+      if (path === "/login") return showLogin(me);
+      if (path === "/cabinet") return showCabinet(me);
+      if (path === "/admin") return showAdmin(me);
+      if (path === "/pay/success") return showSuccess(me);
+      if (path === "/pay/fail") return mount("tpl-fail");
+      if (pay) return showPay(me, pay[1]);
+      mount("tpl-missing");
+    }
+
+    open();
+  </script>
+</body>
+</html>
