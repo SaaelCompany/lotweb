@@ -727,8 +727,28 @@ function editable(raw, overrides) {
   return { ...body, ...overrides };
 }
 
+function allowedIPList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof value !== "string") return [];
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function panelClientBody(raw, overrides) {
+  const body = editable(raw, overrides);
+  body.allowedIPs = allowedIPList(raw?.allowedIPs);
+  if (typeof body.clientHostRuleIds === "string") {
+    body.clientHostRuleIds = body.clientHostRuleIds.split(",").map((item) => Number(item.trim())).filter((item) => Number.isInteger(item));
+  }
+  if (typeof body.reverse === "string") delete body.reverse;
+  for (const key of ["tgId", "limitIp", "totalGB", "expiryTime", "reset"]) {
+    if (typeof body[key] === "string") body[key] = Number(body[key]) || 0;
+  }
+  if (typeof body.keepAlive === "string" && /^-?\d+$/.test(body.keepAlive.trim())) body.keepAlive = Number(body.keepAlive);
+  return body;
+}
+
 async function updateClient(current, overrides) {
-  const next = editable(current.raw, {
+  const next = panelClientBody(current.raw, {
     id: current.uuid,
     email: current.email,
     subId: current.subId,
