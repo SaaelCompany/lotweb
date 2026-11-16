@@ -353,10 +353,6 @@ function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
 
-function formatRub(value) {
-  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(value);
-}
-
 function formatDate(value) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -1202,6 +1198,7 @@ function readBody(req, limit = 8000) {
 function orderJson(order, key) {
   return {
     id: order.id,
+    invId: order.inv_id,
     status: order.status,
     kind: order.kind,
     amountRub: order.amount_rub,
@@ -1221,329 +1218,26 @@ function orderJson(order, key) {
   };
 }
 
-const CSS = `
-:root { --bg:#f7f7f8; --ink:#1a1a1a; --muted:#666; --line:#e4e4e7; --card:#fff; --clay:#b42318; --ok:#067647; --ok-bg:#e8f6ee; }
-* { box-sizing:border-box; }
-[hidden] { display:none !important; }
-body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:"Golos Text","Segoe UI",sans-serif; line-height:1.5; }
-a { color:inherit; } button, input, textarea, select { font:inherit; color:inherit; }
-h1,h2,h3 { margin:0; font-weight:650; letter-spacing:-.02em; }
-h1 { font-size:34px; line-height:1.2; } h2 { font-size:18px; }
-.wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
-.topbar { background:#fff; border-bottom:1px solid var(--line); }
-.topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; }
-.logo { text-decoration:none; font-weight:700; font-size:18px; }
-.nav { display:flex; align-items:center; gap:8px; }
-.user { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
-.hero-band { background:#fff; border-bottom:1px solid var(--line); }
-.hero-grid { display:grid; grid-template-columns:1.25fr .75fr; gap:36px; align-items:center; padding:64px 0; }
-.hero h1 { font-size:48px; max-width:11em; } .lede { margin:12px 0 0; max-width:520px; color:var(--muted); font-size:17px; }
-.hero-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
-.facts { display:grid; gap:16px; } .fact strong { display:block; margin-bottom:2px; }
-.section { padding:36px 0 12px; }
-.steps { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
-.step-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
-.step-no { margin:0 0 8px; color:var(--muted); font-size:13px; }
-.site-footer { background:#161616; color:#c8c8c8; margin-top:48px; }
-.site-footer .wrap { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:28px; padding:36px 0 42px; }
-.site-footer h2 { color:#fff; font-size:16px; margin:0 0 8px; }
-.site-footer a { color:#fff; }
-.orders { display:grid; gap:8px; }
-.order-line { display:flex; justify-content:space-between; gap:16px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
-.tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-.tariff, .card, .key, .plan, .admin-row { background:var(--card); border:1px solid var(--line); border-radius:8px; }
-.tariff { padding:20px; display:flex; flex-direction:column; gap:8px; }
-.tariff.popular { border-color:#111; }
-.badge { align-self:flex-start; border:1px solid var(--line); border-radius:999px; padding:2px 8px; font-size:12px; color:var(--muted); }
-.price { font-size:30px; font-weight:700; margin:4px 0; }
-.muted { color:var(--muted); } .kicker { margin:0 0 6px; color:var(--muted); font-size:13px; }
-.features { margin:0; padding:0; list-style:none; color:var(--muted); font-size:14px; display:grid; gap:4px; }
-.btn, .ghost, .lime { border-radius:6px; padding:10px 14px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
-.btn, .lime { background:#111; color:#fff; border:1px solid #111; }
-.ghost { background:#fff; color:#111; border:1px solid #d4d4d8; } .full { width:100%; margin-top:auto; }
-.notice { padding:12px 14px; background:#fff; border:1px solid #ead7a3; border-radius:8px; color:#6b4e12; }
-.error { color:var(--clay); margin:0; min-height:1.2em; }
-.stack { display:grid; gap:12px; } label { display:grid; gap:6px; font-size:13px; color:var(--muted); }
-input, textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:6px; padding:10px 12px; }
-textarea { min-height:72px; font-family:ui-monospace,monospace; font-size:13px; }
-.keys { display:grid; gap:12px; } .key, .card { padding:18px; }
-.key-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-.pill { border-radius:999px; padding:3px 8px; font-size:12px; background:var(--ok-bg); color:var(--ok); }
-.pill.warn { background:#fdecea; color:var(--clay); }
-.row { display:flex; flex-wrap:wrap; gap:8px; } .qr { width:140px; height:140px; border-radius:6px; background:#fff; border:1px solid var(--line); }
-.plan { text-align:left; padding:14px; cursor:pointer; } .plan strong { display:block; font-size:20px; margin-top:4px; color:#111; }
-.admin-list { display:grid; gap:12px; } .admin-row { padding:16px; display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; align-items:end; }
-.admin-row .error { grid-column:1 / -1; }
-.check { display:flex; align-items:center; gap:6px; white-space:nowrap; } .check input { width:auto; }
-button:focus-visible, a:focus-visible, input:focus { outline:2px solid #111; outline-offset:2px; }
-footer { color:var(--muted); font-size:13px; padding-bottom:32px; }
-@media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1 { font-size:32px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
-`;
 
-function layout(user, main, script = "") {
-  const nav = user
-    ? `<span class="user">${esc(user.email)}</span>${isAdmin(user) ? `<a class="ghost" href="/admin">Тарифы</a>` : ""}<a class="ghost" href="/cabinet">Кабинет</a>
-       <form method="post" action="/api/auth/logout"><button class="btn" type="submit">Выйти</button></form>`
-    : `<a class="btn" href="/login">Войти</a>`;
-  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Лот — ключи VPN</title><link rel="icon" href="/favicon.svg">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
-    <style>${CSS}</style></head><body>
-    <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">Лот</a><nav class="nav">${nav}<a class="ghost" href="/#tariffs">Цены</a></nav></div></header>
-    <main>${main}</main>
-    <footer class="site-footer"><div class="wrap">
-      <div><h2>Лот</h2><p>Ключи VPN для телефона и компьютера. Срок выбираете на сайте, оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
-      <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p></div>
-      <div><h2>Если деньги списались</h2><p>Ключ создаётся после уведомления Platega. Откройте кабинет с той же почты: счёт будет виден там, пока ключ не выдан.</p></div>
-    </div></footer>
-    ${script ? `<script>${script}</script>` : ""}</body></html>`;
-}
-
-function planCards(plans, user) {
-  const popularIndex = plans.length >= 3 ? 1 : -1;
-  return plans.map((plan, index) => {
-    const next = `/cabinet?plan=${plan.id}`;
-    const href = user ? next : `/login?next=${encodeURIComponent(next)}`;
-    const traffic = plan.traffic_gb > 0 ? `${plan.traffic_gb} ГБ` : "Трафик без лимита";
-    return `<article class="tariff${index === popularIndex ? " popular" : ""}">${index === popularIndex ? `<span class="badge">Обычно берут</span>` : ""}
-      <h3>${esc(plan.title)}</h3><p class="price">${esc(formatRub(plan.price_rub))}</p>
-      <ul class="features"><li>${plan.days} дней</li><li>${esc(traffic)}</li><li>Продление того же ключа</li></ul>
-      <a class="btn full" href="${esc(href)}">Купить</a></article>`;
-  }).join("");
-}
-
-function homePage(user, plans) {
+function shopNotice() {
+  if (liveCheckout()) return "";
   const gaps = [];
   if (!plategaConfigured()) gaps.push("в .env не заданы данные Platega");
   if (!env("XUI_BASE_URL") || !(env("XUI_API_TOKEN") || (env("XUI_USERNAME") && env("XUI_PASSWORD")))) gaps.push("не задан адрес панели или токен");
   if (!inboundIds().length) gaps.push("пустой XUI_INBOUND_ID");
-  const banner = liveCheckout()
-    ? ""
-    : `<p class="notice">Оплата пока учебная, деньги не уходят в Platega. ${esc(gaps.join("; "))}. После правки .env выполните ./install.sh start.</p>`;
-  return layout(user, `<section class="hero-band"><div class="wrap hero-grid"><div class="hero">
-      <p class="kicker">VPN</p><h1>Ключ после оплаты</h1>
-      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Новый ключ или продление старого появляется в кабинете.</p>
-      <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок</a><a class="ghost" href="${user ? "/cabinet" : "/login"}">Открыть кабинет</a></div>
-    </div><aside class="card facts">
-      <div class="fact"><strong>Вход по почте</strong><span class="muted">Кабинет открывается сразу, письмо с кодом не отправляется.</span></div>
-      <div class="fact"><strong>Оплата на сайте</strong><span class="muted">Сумму считает сервер и передаёт её в Platega.</span></div>
-      <div class="fact"><strong>Один ключ можно продлить</strong><span class="muted">Дни прибавляются к оставшемуся сроку, а не создают второй ключ.</span></div>
-    </aside></div></section>
-    <div class="wrap">${banner}
-    <section class="section" id="tariffs"><h2>Тарифы</h2><p class="muted">Цена на этой странице — та, которую спишет Platega.</p><div class="tariffs">${planCards(plans, user)}</div></section>
-    <section class="section"><h2>Как получить ключ</h2><div class="steps">
-      <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
-      <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
-      <article class="step-card"><p class="step-no">03</p><h3>Кабинет</h3><p class="muted">Ссылка подписки и QR появляются у этой почты.</p></article>
-    </div></section></div>`);
+  return `Оплата пока учебная, деньги не уходят в Platega. ${gaps.join("; ")}. После правки .env выполните ./install.sh start.`;
 }
 
-function loginPage(user, next, error) {
-  const script = `
-    const nextPath = ${JSON.stringify(safeNext(next))};
-    const ask = document.getElementById("ask");
-    const err = document.getElementById("err");
-    ask.onsubmit = async (event) => {
-      event.preventDefault();
-      err.textContent = "";
-      const email = new FormData(ask).get("email");
-      const response = await fetch("/api/auth/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, next: nextPath }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { err.textContent = data.error || "Не удалось войти"; return; }
-      location.href = data.next || "/cabinet";
-    };
-  `;
-  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:420px"><p class="kicker">Вход</p><h1>Почта</h1>
-    <p class="muted">Пароль и код не нужны. Кабинет откроется сразу.</p>
-    ${error ? `<p class="error">${esc(error)}</p>` : ""}
-    <form id="ask" class="stack"><label>Почта<input type="email" name="email" autocomplete="email" required placeholder="name@mail.ru"></label><button class="btn full" type="submit">Войти</button></form>
-    <p id="err" class="error"></p></div></div>`, script);
+function planJson(plan) {
+  return { id: plan.id, title: plan.title, days: plan.days, priceRub: plan.price_rub, trafficGb: plan.traffic_gb, sort: plan.sort, active: plan.active };
 }
 
-function cabinetPage(user, plans, keys, initialPlan, pending) {
-  const cards = keys.map((key) => {
-    const alive = new Date(key.expires_at).getTime() > Date.now();
-    return `<article class="key"><div class="key-head"><h3 style="margin:0">${esc(key.label)}</h3><span class="${alive ? "pill" : "pill warn"}">${alive ? "действует" : "срок вышел"}</span></div>
-      <p class="muted" style="margin:0">до ${esc(formatDate(key.expires_at))}</p>
-      ${key.demo ? `<p class="notice">Образец. Панель 3x-ui не подключена, эта ссылка никуда не ведёт.</p>` : ""}
-      <div class="row"><button class="ghost" type="button" data-copy="${esc(key.subscription_url)}">Скопировать подписку</button>
-      ${key.share_link ? `<button class="ghost" type="button" data-copy="${esc(key.share_link)}">Скопировать ссылку</button>` : ""}
-      <button class="btn" type="button" data-renew="${esc(key.id)}">Продлить</button></div>
-      <img class="qr" alt="" src="/api/keys/${esc(key.id)}/qr"></article>`;
-  }).join("");
-  const picks = plans.map((plan) => `<button class="plan" type="button" data-plan="${esc(plan.id)}"><span>${esc(plan.title)}</span><strong>${esc(formatRub(plan.price_rub))}</strong><small>Перейти к оплате</small></button>`).join("");
-  const script = `
-    const intent = { kind: "new", keyId: "" };
-    const title = document.getElementById("intent-title");
-    const hint = document.getElementById("intent-hint");
-    const err = document.getElementById("err");
-    document.querySelectorAll("[data-renew]").forEach((button) => {
-      button.onclick = () => {
-        intent.kind = "renew";
-        intent.keyId = button.dataset.renew;
-        title.textContent = "Продлить ключ";
-        hint.textContent = "Дни прибавятся к текущему сроку, если он ещё не закончился.";
-      };
-    });
-    document.getElementById("new-key").onclick = () => {
-      intent.kind = "new"; intent.keyId = "";
-      title.textContent = "Новый ключ";
-      hint.textContent = "Появится отдельный ключ. Старые останутся в списке.";
-    };
-    document.querySelectorAll("[data-plan]").forEach((button) => {
-      button.onclick = async () => {
-        err.textContent = "";
-        button.disabled = true;
-        const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ planId: button.dataset.plan, kind: intent.kind, keyId: intent.keyId }) });
-        const data = await response.json().catch(() => ({}));
-        button.disabled = false;
-        if (!response.ok || !data.id) { err.textContent = data.error || "Не удалось создать счёт"; return; }
-        location.href = "/pay/" + data.id;
-      };
-    });
-    document.querySelectorAll("[data-copy]").forEach((button) => {
-      button.onclick = async () => {
-        const value = button.dataset.copy;
-        try { await navigator.clipboard.writeText(value); } catch {
-          const area = document.createElement("textarea"); area.value = value; document.body.appendChild(area); area.select(); document.execCommand("copy"); area.remove();
-        }
-        const previous = button.textContent; button.textContent = "Скопировано"; setTimeout(() => { button.textContent = previous; }, 1400);
-      };
-    });
-    const wanted = ${JSON.stringify(initialPlan)};
-    if (wanted) document.querySelector("[data-plan='" + wanted.replace(/[^a-z0-9]/g, "") + "']")?.scrollIntoView();
-  `;
-  const waiting = pending.map((order) => `<article class="order-line"><div><strong>Счёт ${esc(order.inv_id)}</strong> · ${esc(formatRub(order.amount_rub))} · ${esc(order.plan_title)}
-      <div class="muted">Ключ ещё не выдан.${order.last_error ? ` ${esc(order.last_error)}` : " Ждём подтверждение Platega. Если деньги уже списались, обновите страницу через минуту."}</div></div></article>`).join("");
-  return layout(user, `<div class="wrap section"><p class="kicker">Кабинет</p><h1>${esc(user.email)}</h1>
-    <div class="stack">${pending.length ? `<h2>Ожидают ключ</h2><div class="orders">${waiting}</div>` : ""}<h2>Ваши ключи</h2>${keys.length ? `<div class="keys">${cards}</div>` : `<p class="muted">Пока пусто. Ниже можно купить первый ключ.</p>`}
-    <section class="card stack" id="buy"><h2 id="intent-title" style="margin:0">Новый ключ</h2><p id="intent-hint" class="muted" style="margin:0">Появится отдельный ключ. Старые останутся в списке.</p>
-    <button id="new-key" class="ghost" type="button">Создать новый, а не продлевать</button><div class="plans">${picks}</div><p id="err" class="error"></p></section></div></div>`, script);
+function keyJson(key) {
+  return { id: key.id, label: key.label, expiresAt: key.expires_at, subscriptionUrl: key.subscription_url, shareLink: key.share_link || "", demo: key.demo };
 }
 
-function adminPage(user, plans, orders) {
-  const field = (name, label, value, extra = "") => `<label>${label}<input name="${name}" value="${esc(value)}" ${extra}></label>`;
-  const row = (plan, create) => `<form class="${create ? "admin-row" : "admin-row"}" id="${create ? "create-plan" : ""}">
-      ${field("id", "Код", plan.id, create ? "required placeholder=\"m12\"" : "readonly")}
-      ${field("title", "Название", plan.title, "required")}
-      ${field("days", "Дней", plan.days, "type=\"number\" min=\"1\" required")}
-      ${field("priceRub", "Цена, ₽", plan.price_rub, "type=\"number\" min=\"1\" required")}
-      ${field("trafficGb", "ГБ, 0 = без лимита", plan.traffic_gb, "type=\"number\" min=\"0\" required")}
-      ${field("sort", "Порядок", plan.sort, "type=\"number\" min=\"0\" required")}
-      <label class="check"><input name="active" type="checkbox" ${plan.active ? "checked" : ""}>Показывать</label>
-      <button class="btn" type="submit">${create ? "Добавить" : "Сохранить"}</button>
-      <p class="error"></p>
-    </form>`;
-  const script = `
-    async function send(form, create) {
-      const err = form.querySelector(".error");
-      err.textContent = "";
-      const body = Object.fromEntries(new FormData(form).entries());
-      body.active = Boolean(form.querySelector('[name="active"]').checked);
-      body.days = Number(body.days);
-      body.priceRub = Number(body.priceRub);
-      body.trafficGb = Number(body.trafficGb);
-      body.sort = Number(body.sort);
-      body.create = create;
-      const response = await fetch("/api/admin/plans", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { err.textContent = data.error || "Не сохранилось"; return; }
-      location.reload();
-    }
-    document.querySelectorAll(".admin-list form").forEach((form) => { form.onsubmit = (event) => { event.preventDefault(); send(form, false); }; });
-    document.getElementById("create-plan").onsubmit = (event) => { event.preventDefault(); send(event.target, true); };
-    document.querySelectorAll("[data-reissue]").forEach((button) => {
-      button.onclick = async () => {
-        button.disabled = true;
-        const response = await fetch("/api/admin/reissue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ invId: button.dataset.reissue }) });
-        const data = await response.json().catch(() => ({}));
-        button.disabled = false;
-        if (!response.ok) { button.insertAdjacentText("afterend", " " + (data.error || "Не вышло")); return; }
-        location.reload();
-      };
-    });
-  `;
-  const bills = orders.map((order) => `<article class="order-line"><div><strong>Счёт ${esc(order.inv_id)}</strong> · ${esc(order.email)} · ${esc(order.plan_title)} · ${esc(formatRub(order.amount_rub))}
-      <div class="muted">${order.status === "paid" ? "ключ выдан" : "ключ не выдан"}${order.demo ? " · учебный" : ""}${order.last_error ? ` · ${esc(order.last_error)}` : ""}</div></div>
-      ${order.status !== "paid" && !order.demo ? `<button class="btn" type="button" data-reissue="${esc(order.inv_id)}">Выдать ключ</button>` : ""}</article>`).join("");
-  return layout(user, `<div class="wrap section"><p class="kicker">Админ</p><h1>Тарифы и счета</h1>
-    <p class="muted">Если деньги в Platega списались, а ключа нет, нажмите «Выдать ключ» у нужного счёта. Callback URL в кабинете Platega: адрес этого сайта по HTTPS с путём /api/platega/callback.</p>
-    <h2>Последние счета</h2><div class="orders">${bills || `<p class="muted">Счетов пока нет.</p>`}</div>
-    <h2>Тарифы</h2>
-    <div class="admin-list">${plans.map((plan) => row(plan, false)).join("")}</div>
-    <h2>Новый тариф</h2>
-    ${row({ id: "", title: "", days: 30, price_rub: 249, traffic_gb: 0, sort: 10, active: true }, true)}
-    </div>`, script);
-}
-
-function payPage(user, order) {
-  if (!liveCheckout() || order.demo) {
-    const script = `
-      document.getElementById("demo-pay").onclick = async () => {
-        const err = document.getElementById("err");
-        err.textContent = "";
-        const response = await fetch("/api/orders/${order.id}/demo-pay", { method: "POST" });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) { err.textContent = data.error || "Не вышло провести демо-оплату"; return; }
-        location.href = "/pay/success?order=${order.id}";
-      };
-    `;
-    return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:440px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
-      <h1>${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
-      <p class="notice">Platega или панель ещё не подключены. Эта кнопка только показывает, как ключ появляется после оплаты. Деньги не списываются.</p>
-      <button id="demo-pay" class="btn full" type="button">Провести демо-оплату</button><p id="err" class="error"></p></div></div>`, script);
-  }
-  const script = `
-    document.getElementById("pay").onclick = async () => {
-      const err = document.getElementById("err");
-      const button = document.getElementById("pay");
-      err.textContent = "";
-      button.disabled = true;
-      const response = await fetch("/api/orders/${order.id}/pay", { method: "POST" });
-      const data = await response.json().catch(() => ({}));
-      button.disabled = false;
-      if (!response.ok || !data.redirect) { err.textContent = data.error || "Не удалось открыть оплату"; return; }
-      location.href = data.redirect;
-    };
-  `;
-  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:440px"><p class="kicker">Счёт ${esc(order.inv_id)}</p>
-    <h1>${order.kind === "renew" ? "Продление" : "Новый ключ"}</h1><p class="price">${esc(formatRub(order.amount_rub))}</p>
-    <p class="muted">Ключ VPN, ${esc(order.plan_title)}. После оплаты он появится в кабинете.</p>
-    <button id="pay" class="btn full" type="button">Оплатить через Platega</button><p id="err" class="error"></p></div></div>`, script);
-}
-
-function successPage(user, orderId) {
-  const script = `
-    const box = document.getElementById("status");
-    async function tick() {
-      const response = await fetch("/api/orders/${orderId}", { cache: "no-store" });
-      if (!response.ok) return;
-      const data = await response.json();
-      box.replaceChildren();
-      if (data.status !== "paid" || !data.key) {
-        const p = document.createElement("p");
-        p.textContent = "Платёж ещё не подтверждён. Страница обновится сама.";
-        box.appendChild(p);
-        if (data.lastError) { const e = document.createElement("p"); e.className = "error"; e.textContent = "Ключ пока не выдан: " + data.lastError; box.appendChild(e); }
-        setTimeout(tick, 2000);
-        return;
-      }
-      const p = document.createElement("p");
-      const when = new Date(data.key.expiresAt).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-      p.textContent = (data.kind === "renew" ? "Ключ продлён" : "Ключ готов") + " до " + when + ".";
-      box.appendChild(p);
-      if (data.key.demo) { const n = document.createElement("p"); n.className = "notice"; n.textContent = "Это образец: панель 3x-ui не была подключена в момент оплаты."; box.appendChild(n); }
-      const area = document.createElement("textarea"); area.readOnly = true; area.value = data.key.subscriptionUrl; box.appendChild(area);
-      const row = document.createElement("div"); row.className = "row";
-      const copy = document.createElement("button"); copy.className = "ghost"; copy.type = "button"; copy.textContent = "Скопировать подписку";
-      copy.onclick = () => navigator.clipboard.writeText(data.key.subscriptionUrl).then(() => { copy.textContent = "Скопировано"; });
-      const link = document.createElement("a"); link.className = "btn"; link.href = "/cabinet"; link.textContent = "Открыть кабинет";
-      row.append(copy, link); box.appendChild(row);
-      const img = document.createElement("img"); img.className = "qr"; img.alt = ""; img.src = "/api/keys/" + data.key.id + "/qr"; box.appendChild(img);
-    }
-    tick();
-  `;
-  return layout(user, `<div class="wrap section"><div class="card stack" style="max-width:640px"><p class="kicker">Оплата</p><h1>Ключ</h1><div id="status"><p>Проверяем оплату…</p></div></div></div>`, script);
+function sendPage(res) {
+  send(res, 200, readFileSync(join(root, "page.html")), { "content-type": "text/html; charset=utf-8" });
 }
 
 function send(res, status, body, headers = {}) {
@@ -1621,73 +1315,42 @@ async function handle(req, res) {
   }
 
   const user = await currentUser(req);
-  if (req.method === "GET" && path === "/") return send(res, 200, homePage(user, await listPlans()), { "content-type": "text/html; charset=utf-8" });
-  if (req.method === "GET" && path === "/login") {
-    if (user) {
-      res.writeHead(303, { location: safeNext(url.searchParams.get("next")) });
-      res.end();
-      return;
-    }
-    const error = url.searchParams.get("error") === "link" ? "Ссылка устарела или уже использована. Запросите новую." : "";
-    return send(res, 200, loginPage(null, url.searchParams.get("next") || "", error), { "content-type": "text/html; charset=utf-8" });
+  if (req.method === "GET" && path === "/api/me") return json(res, { email: user?.email || "", admin: isAdmin(user) });
+  if (req.method === "GET" && path === "/api/shop") return json(res, { live: liveCheckout(), notice: shopNotice() });
+  if (req.method === "GET" && path === "/api/plans") return json(res, { plans: (await listPlans()).map(planJson) });
+  if (req.method === "GET" && path === "/api/cabinet") {
+    if (!user) return json(res, { error: "Войдите по почте" }, 401);
+    const pending = await listPendingOrders(user.id);
+    return json(res, {
+      plans: (await listPlans()).map(planJson),
+      keys: (await listKeys(user.id)).map(keyJson),
+      pending: pending.map((order) => ({ invId: order.inv_id, amountRub: order.amount_rub, planTitle: order.plan_title, lastError: order.last_error || "" })),
+    });
   }
-  if (req.method === "GET" && path === "/admin") {
-    if (!user) {
-      res.writeHead(303, { location: "/login?next=/admin" });
-      res.end();
-      return;
-    }
-    if (!isAdmin(user)) {
-      return send(res, 403, layout(user, `<div class="wrap section"><div class="card"><h1>Нет доступа</h1><p class="muted">Эта почта не указана в ADMIN_EMAIL. Добавьте её в .env и перезапустите сайт.</p></div></div>`), { "content-type": "text/html; charset=utf-8" });
-    }
-    return send(res, 200, adminPage(user, await listPlansAll(), await listRecentOrders()), { "content-type": "text/html; charset=utf-8" });
+  if (req.method === "GET" && path === "/api/admin") {
+    if (!user) return json(res, { error: "Войдите по почте" }, 401);
+    if (!isAdmin(user)) return json(res, { error: "Нет доступа" }, 403);
+    const orders = await listRecentOrders();
+    return json(res, {
+      plans: (await listPlansAll()).map(planJson),
+      orders: orders.map((order) => ({
+        invId: order.inv_id,
+        email: order.email,
+        planTitle: order.plan_title,
+        amountRub: order.amount_rub,
+        status: order.status,
+        demo: order.demo,
+        lastError: order.last_error || "",
+      })),
+    });
   }
-  if (req.method === "GET" && path === "/cabinet") {
-    if (!user) {
-      res.writeHead(303, { location: `/login?next=${encodeURIComponent(`/cabinet${url.search}`)}` });
+  if (req.method === "GET" && path === "/pay/success" && !url.searchParams.get("order") && url.searchParams.get("InvId") && user) {
+    const byInv = await getOrderByInv(url.searchParams.get("InvId"));
+    if (byInv && byInv.user_id === user.id) {
+      res.writeHead(303, { location: `/pay/success?order=${byInv.id}` });
       res.end();
       return;
     }
-    return send(res, 200, cabinetPage(user, await listPlans(), await listKeys(user.id), url.searchParams.get("plan") || "", await listPendingOrders(user.id)), { "content-type": "text/html; charset=utf-8" });
-  }
-  if (req.method === "GET" && (path === "/pay/success" || path === "/pay/fail")) {
-    if (path === "/pay/fail") {
-      return send(res, 200, layout(user, `<div class="wrap section"><div class="card stack" style="max-width:560px"><p class="kicker">Оплата</p><h1>Платёж не прошёл</h1><p>Деньги не списаны, ключ не менялся. Можно вернуться в кабинет и создать счёт ещё раз.</p><a class="btn" href="/cabinet">В кабинет</a></div></div>`), { "content-type": "text/html; charset=utf-8" });
-    }
-    if (!user) {
-      res.writeHead(303, { location: `/login?next=${encodeURIComponent(`${path}${url.search}`)}` });
-      res.end();
-      return;
-    }
-    let orderId = url.searchParams.get("order") || "";
-    if (!orderId && url.searchParams.get("InvId")) {
-      const byInv = await getOrderByInv(url.searchParams.get("InvId"));
-      if (byInv && byInv.user_id === user.id) orderId = byInv.id;
-    }
-    const found = orderId ? await getOrderForUser(orderId, user.id) : null;
-    if (!found) return send(res, 200, layout(user, `<div class="wrap section"><div class="card"><h1>Счёт не найден</h1><a class="btn" href="/cabinet">В кабинет</a></div></div>`), { "content-type": "text/html; charset=utf-8" });
-    return send(res, 200, successPage(user, found.order.id), { "content-type": "text/html; charset=utf-8" });
-  }
-
-  const pay = path.match(/^\/pay\/([a-f0-9]{32})$/);
-  if (req.method === "GET" && pay) {
-    if (!user) {
-      res.writeHead(303, { location: `/login?next=${encodeURIComponent(path)}` });
-      res.end();
-      return;
-    }
-    const found = await getOrderForUser(pay[1], user.id);
-    if (!found) {
-      res.writeHead(303, { location: "/cabinet" });
-      res.end();
-      return;
-    }
-    if (found.order.status === "paid") {
-      res.writeHead(303, { location: `/pay/success?order=${found.order.id}` });
-      res.end();
-      return;
-    }
-    return send(res, 200, payPage(user, found.order), { "content-type": "text/html; charset=utf-8" });
   }
 
   if (req.method === "POST" && path === "/api/admin/reissue") {
@@ -1750,7 +1413,8 @@ async function handle(req, res) {
     send(res, 200, png, { "content-type": "image/png" });
     return;
   }
-  send(res, 404, layout(user, `<div class="wrap section"><div class="card"><h1>Страница не найдена</h1><a class="btn" href="/">На главную</a></div></div>`), { "content-type": "text/html; charset=utf-8" });
+  if (req.method === "GET" && !path.startsWith("/api/")) return sendPage(res);
+  send(res, 404, "not found", { "content-type": "text/plain; charset=utf-8" });
 }
 
 const server = http.createServer((req, res) => {
