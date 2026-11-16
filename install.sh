@@ -112,10 +112,21 @@ if [[ "${1:-}" == "start" ]]; then
     fi
     sleep 0.4
     systemctl start lotweb
-    sleep 1
     echo "Ответ сайта:"
-    curl -fsS http://127.0.0.1:3000/api/shop || echo "Сайт на порту 3000 не ответил"
-    echo
+    answer=""
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+      if answer="$(curl -fsS --max-time 2 http://127.0.0.1:3000/api/shop)"; then
+        break
+      fi
+      answer=""
+      sleep 1
+    done
+    if [[ -n "$answer" ]]; then
+      printf '%s\n' "$answer"
+    else
+      echo "Сайт на порту 3000 не ответил"
+      journalctl -u lotweb -n 40 --no-pager || true
+    fi
     systemctl status lotweb --no-pager
     exit 0
   fi
