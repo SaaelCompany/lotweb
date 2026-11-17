@@ -243,6 +243,102 @@ function subscriptionBase() {
   return panel ? `${panel}/sub` : "";
 }
 
+function cleanSubPath(value) {
+  const text = String(value || "").trim();
+  if (!text || text === "/") return "";
+  const withSlash = text.startsWith("/") ? text : `/${text}`;
+  return withSlash.replace(/\/+$/, "");
+}
+
+function panelSecretPath() {
+  try {
+    const part = new URL(env("XUI_BASE_URL")).pathname.split("/").filter(Boolean)[0] || "";
+    if (!part || part === "panel" || part === "sub" || part === "json") return "";
+    return `/${part}`;
+  } catch {
+    return "";
+  }
+}
+
+function chosenSubPath(setting) {
+  const configured = cleanSubPath(setting?.subPath);
+  const secret = panelSecretPath();
+  if (configured && configured !== "/sub") return configured;
+  if (secret) return secret;
+  return configured || "/sub";
+}
+
+function subscriptionLink(root, subId) {
+  const id = String(subId || "").trim();
+  if (!root || !id) return "";
+  return safeHttp(`${String(root).replace(/\/$/, "")}/${encodeURIComponent(id)}`);
+}
+
+async function panelSetting() {
+  const cached = panelMemory.__lotSubSetting;
+  if (cached && cached.until > Date.now()) return cached.value;
+  const attempts = [
+    ["/panel/api/setting/defaultSettings", "POST"],
+    ["/panel/setting/defaultSettings", "POST"],
+    ["/panel/api/setting/all", "POST"],
+    ["/panel/setting/all", "POST"],
+    ["/panel/api/setting/all", "GET"],
+  ];
+  let value = null;
+  for (const [path, method] of attempts) {
+    try {
+      const result = await panel(path, method === "GET" ? { method } : { method, body: "{}" });
+      const obj = result.json?.obj && typeof result.json.obj === "object" ? result.json.obj : null;
+      if (result.status === 200 && obj && (obj.subPath || obj.subURI || obj.subPort || obj.webBasePath)) {
+        value = obj;
+        break;
+      }
+    } catch {
+      value = null;
+    }
+  }
+  panelMemory.__lotSubSetting = { until: Date.now() + (value ? 60_000 : 15_000), value };
+  return value;
+}
+
+async function subscriptionRoot() {
+  const cached = panelMemory.__lotSubRoot;
+  if (cached && cached.until > Date.now()) return cached.value;
+  const explicit = env("XUI_SUB_BASE_URL").replace(/\/$/, "");
+  const panelBase = env("XUI_BASE_URL").replace(/\/$/, "");
+  let setting = null;
+  if (xuiConfigured()) {
+    try { setting = await panelSetting(); } catch { setting = null; }
+  }
+  const path = chosenSubPath(setting);
+  let value = "";
+  const subUri = String(setting?.subURI || "").trim();
+  if (/^https?:\/\//i.test(subUri)) {
+    try {
+      const url = new URL(subUri);
+      const current = url.pathname.replace(/\/$/, "") || "/";
+      if (path && current !== path && (current === "/" || current === "/sub")) url.pathname = path;
+      value = url.toString().replace(/\/$/, "");
+    } catch {
+      value = "";
+    }
+  }
+  if (!value && path) {
+    let explicitUrl = null;
+    try { if (explicit) explicitUrl = new URL(explicit); } catch { explicitUrl = null; }
+    let panelUrl = null;
+    try { if (panelBase) panelUrl = new URL(panelBase); } catch { panelUrl = null; }
+    const host = String(setting?.subDomain || "").trim() || explicitUrl?.hostname || panelUrl?.hostname || "";
+    const scheme = (explicitUrl?.protocol || panelUrl?.protocol || "https:").replace(":", "");
+    const port = Number(setting?.subPort) || Number(explicitUrl?.port) || 0;
+    const portBit = port && !((scheme === "https" && port === 443) || (scheme === "http" && port === 80)) ? `:${port}` : "";
+    if (host) value = `${scheme}://${host}${portBit}${path}`;
+  }
+  if (!value) value = explicit || (panelBase ? `${panelBase}/sub` : "");
+  panelMemory.__lotSubRoot = { until: Date.now() + (value ? 60_000 : 15_000), value };
+  return value;
+}
+
 async function sql(text, params = []) {
   if (databaseUrl !== "") {
     state.pool ??= new pg.Pool({ connectionString: databaseUrl, max: 5 });
@@ -594,16 +690,16 @@ async function panelCookie() {
   return value;
 }
 
-function present(client, email, inboundId, panelApi, shareLink) {
+function present(client, email, inboundId, panelApi, shareLink, subRoot) {
   const uuid = String(client.id || client.uuid || "");
   const subId = String(client.subId || "");
-  const base = subscriptionBase();
+  const base = subRoot || subscriptionBase();
   return {
     email,
     uuid,
     subId,
     expiresAtMs: Number(client.expiryTime) || 0,
-    subscriptionUrl: safeHttp(base && subId ? `${base}/${encodeURIComponent(subId)}` : ""),
+    subscriptionUrl: subscriptionLink(base, subId),
     shareLink: shareLink && isShareLink(shareLink) ? shareLink : "",
     inboundId,
     panelApi,
@@ -625,13 +721,13 @@ async function findClient(email) {
       const links = Array.isArray(obj.externalLinks) ? obj.externalLinks : [];
       const share = links.find((item) => item && item.kind === "link" && typeof item.value === "string" && isShareLink(item.value));
       const inbound = Array.isArray(obj.inboundIds) ? Number(obj.inboundIds[0]) : inboundIds()[0];
-      return present(client, email, Number.isInteger(inbound) ? inbound : null, "clients", share?.value);
+      return present(client, email, Number.isInteger(inbound) ? inbound : null, "clients", share?.value, await subscriptionRoot());
     } else if (modern.json?.success === false) return null;
   }
   const legacy = await legacyInbound();
   if (!legacy) return null;
   const client = legacy.clients.find((item) => item.email === email);
-  return client ? present(client, email, legacy.inboundId, "inbounds") : null;
+  return client ? present(client, email, legacy.inboundId, "inbounds", "", await subscriptionRoot()) : null;
 }
 
 function dropPanelCache() {
@@ -796,7 +892,7 @@ async function updateClient(current, overrides) {
     if (modern.status !== 404) {
       assertOk(modern, "Не удалось обновить ключ в панели");
       dropPanelCache();
-      return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, current.panelApi, current.shareLink);
+      return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, current.panelApi, current.shareLink, await subscriptionRoot());
     }
     panelMemory.__lotXuiLegacy = true;
   }
@@ -810,7 +906,7 @@ async function updateClient(current, overrides) {
   });
   assertOk(legacy, "Не удалось обновить ключ в панели");
   dropPanelCache();
-  return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, "inbounds", current.shareLink);
+  return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, "inbounds", current.shareLink, await subscriptionRoot());
 }
 
 async function extendClientTo(input) {
@@ -1645,7 +1741,9 @@ async function handle(req, res) {
   if (req.method === "GET" && qr) {
     if (!user) return send(res, 401, "unauthorized", { "content-type": "text/plain" });
     const rows = await sql("select subscription_url from vpn_keys where id = $1 and user_id = $2", [qr[1], user.id]);
-    const link = safeHttp(rows[0]?.subscription_url || "");
+    const stored = rows[0]?.subscription_url || "";
+    const id = stored.split("?")[0].split("/").filter(Boolean).pop() || "";
+    const link = subscriptionLink(await subscriptionRoot().catch(() => ""), id) || safeHttp(stored);
     if (!link) return send(res, 404, "not found", { "content-type": "text/plain" });
     const png = await QRCode.toBuffer(link, { width: 280, margin: 1, color: { dark: "#14352c", light: "#fffaf1" } });
     send(res, 200, png, { "content-type": "image/png" });
