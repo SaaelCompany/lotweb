@@ -73,7 +73,8 @@ SMTP_FROM=
 loadEnv(join(root, ".env"));
 
 const PORT = Number(process.env.PORT || 3000);
-const DEVICE_LIMIT = 3;
+const IP_LIMIT = 10;
+const DEVICE_LIMIT = 4;
 const CATALOG_MARK = "2026-11-17-v1";
 const CATALOG = [
   ["m1", "1 месяц", 30, 150, 1],
@@ -812,7 +813,8 @@ async function issueClient(input) {
     subId: input.subId,
     totalGB: input.totalBytes,
     expiryTime: input.expiryTime,
-    limitIp: DEVICE_LIMIT,
+    limitIp: IP_LIMIT,
+    limitHwid: DEVICE_LIMIT,
     tgId: 0,
     enable: true,
     comment: input.comment,
@@ -847,6 +849,19 @@ async function issueClient(input) {
   return created;
 }
 
+function limitsReady(raw) {
+  return Number(raw?.limitIp) === IP_LIMIT && Number(raw?.limitHwid) === DEVICE_LIMIT;
+}
+
+async function applyLimits(client) {
+  if (!client || limitsReady(client.raw)) return client;
+  try {
+    return await updateClient(client, { limitIp: IP_LIMIT, limitHwid: DEVICE_LIMIT });
+  } catch {
+    return client;
+  }
+}
+
 function editable(raw, overrides) {
   const body = {};
   for (const [key, value] of Object.entries(raw)) {
@@ -868,7 +883,7 @@ function panelClientBody(raw, overrides) {
     body.clientHostRuleIds = body.clientHostRuleIds.split(",").map((item) => Number(item.trim())).filter((item) => Number.isInteger(item));
   }
   if (typeof body.reverse === "string") delete body.reverse;
-  for (const key of ["tgId", "limitIp", "totalGB", "expiryTime", "reset"]) {
+  for (const key of ["tgId", "limitIp", "limitHwid", "totalGB", "expiryTime", "reset"]) {
     if (typeof body[key] === "string") body[key] = Number(body[key]) || 0;
   }
   if (typeof body.keepAlive === "string" && /^-?\d+$/.test(body.keepAlive.trim())) body.keepAlive = Number(body.keepAlive);
@@ -913,14 +928,15 @@ async function extendClientTo(input) {
   const current = await findClient(input.email);
   if (!current) throw new Error("Ключ не найден в панели");
   const totalBytes = input.addGb <= 0 ? 0 : (Number(current.raw.totalGB) || 0) + input.addGb * 1024 * 1024 * 1024;
-  const sameTerm = current.expiresAtMs + 5000 >= input.expiryTime && current.enable !== false && Number(current.raw?.limitIp) === DEVICE_LIMIT;
+  const sameTerm = current.expiresAtMs + 5000 >= input.expiryTime && current.enable !== false && limitsReady(current.raw);
   if (sameTerm && input.addGb <= 0) return current;
   return updateClient(current, {
     email: input.email,
     expiryTime: input.expiryTime,
     totalGB: totalBytes,
     enable: true,
-    limitIp: DEVICE_LIMIT,
+    limitIp: IP_LIMIT,
+    limitHwid: DEVICE_LIMIT,
     comment: input.comment,
   });
 }
@@ -1054,6 +1070,7 @@ async function syncKey(key, wantedName) {
         }
       }
     }
+    client = await applyLimits(client);
     const unlimited = !(Number(client.expiresAtMs) > 0);
     const enabled = client.enable !== false;
     const expiresAt = unlimited ? key.expires_at : new Date(client.expiresAtMs).toISOString();

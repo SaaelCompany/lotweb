@@ -74,7 +74,7 @@
   <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">LotVPN</a><nav class="nav" id="nav"></nav></div></header>
   <main id="view"></main>
   <footer class="site-footer"><div class="wrap">
-    <div><h2>LotVPN</h2><p>Подписка на ключ для телефона и компьютера. На сайте указаны срок, цена и лимит в 3 устройства. Оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
+    <div><h2>LotVPN</h2><p>Подписка на ключ для телефона и компьютера. На сайте указаны срок, цена и лимит в 4 устройства. Оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
     <div><h2>Документы</h2><p><a href="/privacy">Политика конфиденциальности</a></p><p><a href="/terms">Пользовательское соглашение</a></p><p><a href="/setup">Как подключить Happ и Incy</a></p><p><a href="/#tariffs">Цены и тарифы</a></p></div>
     <div><h2>Поддержка</h2><p>Telegram: <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a></p><p>Это личный аккаунт поддержки, не группа.</p></div>
     <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p><p>Если деньги списались, откройте кабинет с той же почты.</p></div>
@@ -83,7 +83,7 @@
   <template id="tpl-home">
     <section class="hero-band"><div class="wrap hero-grid"><div class="hero">
       <p class="kicker">LotVPN</p><h1>Ключ после оплаты</h1>
-      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Одна подписка работает на 3 устройствах. Новый ключ или продление старого появляется в кабинете.</p>
+      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Одна подписка работает на 4 устройствах. Новый ключ или продление старого появляется в кабинете.</p>
       <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок</a><a class="ghost" id="cabinet-link" href="/login">Открыть кабинет</a></div>
     </div><aside class="card facts">
       <div class="fact"><strong>Вход по почте</strong><span class="muted">Кабинет открывается сразу, письмо с кодом не отправляется.</span></div>
@@ -163,7 +163,7 @@
 
   <template id="tpl-setup">
     <div class="wrap section"><p class="kicker">LotVPN</p><h1>Как добавить подключение</h1>
-      <p class="muted">После оплаты в кабинете есть ссылка подписки и QR. Одна и та же ссылка подходит для Happ и Incy. На одну подписку можно подключить до 3 устройств.</p>
+      <p class="muted">После оплаты в кабинете есть ссылка подписки и QR. Одна и та же ссылка подходит для Happ и Incy. На одну подписку можно подключить до 4 устройств.</p>
       <article class="doc">
         <h2>Что копировать</h2>
         <ol>
@@ -264,7 +264,7 @@
         <ol>
           <li>Сервис предоставляет цифровой доступ: ключ подписки LotVPN на выбранный и оплаченный срок.</li>
           <li>До оплаты на сайте указаны цена, срок и состав тарифа. На дату этой редакции тарифы такие: 150 ₽ за 1 месяц (30 дней), 300 ₽ за 2 месяца (60 дней), 430 ₽ за 3 месяца (90 дней).</li>
-          <li>Одна подписка рассчитана на одновременное использование не более чем на 3 устройствах. Отдельная квота трафика в рамках оплаченного срока не устанавливается.</li>
+          <li>Одна подписка рассчитана на одновременное использование не более чем на 4 устройствах. Отдельная квота трафика в рамках оплаченного срока не устанавливается.</li>
           <li>Ключ появляется в кабинете по той почте, с которой оформлен заказ. Продление прибавляет оплаченные дни к оставшемуся сроку той же подписки.</li>
           <li>Пользователь понимает, что услуга нематериальная: её ценность в доступе на оплаченный срок, а не в передаче вещи.</li>
         </ol>
@@ -284,7 +284,7 @@
         <h2>5. Интеллектуальная собственность</h2>
         <ol>
           <li>Материалы Сервиса охраняются законодательством об интеллектуальной собственности.</li>
-          <li>Пользователю запрещается копировать, распространять и перепродавать материалы Сервиса без разрешения правообладателя. Выданный ключ предназначен для личного использования на не более чем 3 устройствах.</li>
+          <li>Пользователю запрещается копировать, распространять и перепродавать материалы Сервиса без разрешения правообладателя. Выданный ключ предназначен для личного использования на не более чем 4 устройствах.</li>
         </ol>
         <h2>6. Ограничение доступа</h2>
         <ol>
@@ -421,7 +421,7 @@
       const list = el("ul", "features");
       list.append(
         el("li", "", `${rub(plan.priceRub)} за ${plan.days} дней`),
-        el("li", "", "До 3 устройств"),
+        el("li", "", "До 4 устройств"),
         el("li", "", plan.trafficGb > 0 ? `${plan.trafficGb} ГБ` : "Трафик без лимита"),
         el("li", "", "Продление того же ключа"),
       );
@@ -464,7 +464,7 @@
     function planButton(plan, intent, err) {
       const button = el("button", "plan");
       button.type = "button";
-      button.append(el("span", "", plan.title), el("strong", "", rub(plan.priceRub)), el("small", "", `${plan.days} дней, до 3 устройств`));
+      button.append(el("span", "", plan.title), el("strong", "", rub(plan.priceRub)), el("small", "", `${plan.days} дней, до 4 устройств`));
       button.onclick = async () => {
         err.textContent = "";
         button.disabled = true;
@@ -506,7 +506,7 @@
           const card = el("article", "key");
           const head = el("div", "key-head");
           head.append(el("h3", "", key.label), el("span", pill[0], pill[1]));
-          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)), el("p", "muted", "До 3 устройств на эту подписку."));
+          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)), el("p", "muted", "До 4 устройств на эту подписку."));
           if (key.demo) card.append(el("p", "notice", "Образец. Панель 3x-ui не подключена, эта ссылка никуда не ведёт."));
           const row = el("div", "row");
           const copy = el("button", "ghost", "Скопировать подписку");
@@ -652,13 +652,13 @@
       document.getElementById("title").textContent = data.kind === "renew" ? "Продление подписки" : "Новая подписка";
       document.getElementById("price").textContent = rub(data.amountRub);
       const days = Number(data.planDays) || 0;
-      document.getElementById("offer").textContent = `${rub(data.amountRub)} за ${data.planTitle || "подписку LotVPN"}${days ? `, ${days} дней` : ""}, до ${data.deviceLimit || 3} устройств.`;
+      document.getElementById("offer").textContent = `${rub(data.amountRub)} за ${data.planTitle || "подписку LotVPN"}${days ? `, ${days} дней` : ""}, до ${data.deviceLimit || 4} устройств.`;
       const hint = document.getElementById("hint");
       const note = document.getElementById("demo-note");
       const button = document.getElementById("pay");
       const err = document.getElementById("err");
       if (data.practice) {
-        hint.textContent = `Подписка LotVPN «${data.planTitle}». Деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui, до 3 устройств.`;
+        hint.textContent = `Подписка LotVPN «${data.planTitle}». Деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui, до 4 устройств.`;
         button.textContent = "Провести демо-оплату";
         button.onclick = async () => {
           err.textContent = "";
