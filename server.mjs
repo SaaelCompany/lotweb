@@ -275,63 +275,21 @@ function subscriptionLink(root, subId) {
   return safeHttp(`${String(root).replace(/\/$/, "")}/${encodeURIComponent(id)}`);
 }
 
-async function panelSetting() {
-  const cached = panelMemory.__lotSubSetting;
-  if (cached && cached.until > Date.now()) return cached.value;
-  const attempts = [
-    ["/panel/api/setting/defaultSettings", "POST"],
-    ["/panel/setting/defaultSettings", "POST"],
-    ["/panel/api/setting/all", "POST"],
-    ["/panel/setting/all", "POST"],
-    ["/panel/api/setting/all", "GET"],
-  ];
-  let value = null;
-  for (const [path, method] of attempts) {
-    try {
-      const result = await panel(path, method === "GET" ? { method } : { method, body: "{}" });
-      const obj = result.json?.obj && typeof result.json.obj === "object" ? result.json.obj : null;
-      if (result.status === 200 && obj && (obj.subPath || obj.subURI || obj.subPort || obj.webBasePath)) {
-        value = obj;
-        break;
-      }
-    } catch {
-      value = null;
-    }
-  }
-  panelMemory.__lotSubSetting = { until: Date.now() + (value ? 60_000 : 15_000), value };
-  return value;
-}
-
 async function subscriptionRoot() {
   const cached = panelMemory.__lotSubRoot;
   if (cached && cached.until > Date.now()) return cached.value;
   const explicit = env("XUI_SUB_BASE_URL").replace(/\/$/, "");
   const panelBase = env("XUI_BASE_URL").replace(/\/$/, "");
-  let setting = null;
-  if (xuiConfigured()) {
-    try { setting = await panelSetting(); } catch { setting = null; }
-  }
-  const path = chosenSubPath(setting);
+  const path = chosenSubPath(null);
   let value = "";
-  const subUri = String(setting?.subURI || "").trim();
-  if (/^https?:\/\//i.test(subUri)) {
-    try {
-      const url = new URL(subUri);
-      const current = url.pathname.replace(/\/$/, "") || "/";
-      if (path && current !== path && (current === "/" || current === "/sub")) url.pathname = path;
-      value = url.toString().replace(/\/$/, "");
-    } catch {
-      value = "";
-    }
-  }
   if (!value && path) {
     let explicitUrl = null;
     try { if (explicit) explicitUrl = new URL(explicit); } catch { explicitUrl = null; }
     let panelUrl = null;
     try { if (panelBase) panelUrl = new URL(panelBase); } catch { panelUrl = null; }
-    const host = String(setting?.subDomain || "").trim() || explicitUrl?.hostname || panelUrl?.hostname || "";
+    const host = explicitUrl?.hostname || panelUrl?.hostname || "";
     const scheme = (explicitUrl?.protocol || panelUrl?.protocol || "https:").replace(":", "");
-    const port = Number(setting?.subPort) || Number(explicitUrl?.port) || 0;
+    const port = Number(explicitUrl?.port) || 0;
     const portBit = port && !((scheme === "https" && port === 443) || (scheme === "http" && port === 80)) ? `:${port}` : "";
     if (host) value = `${scheme}://${host}${portBit}${path}`;
   }
@@ -855,6 +813,9 @@ function limitsReady(raw) {
 
 async function applyLimits(client) {
   if (!client || limitsReady(client.raw)) return client;
+  const seen = panelMemory.__lotLimitOnce ??= new Set();
+  if (seen.has(client.email)) return client;
+  seen.add(client.email);
   try {
     return await updateClient(client, { limitIp: IP_LIMIT, limitHwid: DEVICE_LIMIT });
   } catch {
