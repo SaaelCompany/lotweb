@@ -92,7 +92,7 @@
     </aside></div></section>
     <div class="wrap">
       <p class="notice" id="notice" hidden></p>
-      <section class="section" id="tariffs"><h2>Цены и тарифы</h2><p class="muted" id="tariff-note">Сумма на карточке — это плата за подписку LotVPN на указанный срок. Одна подписка — до 3 устройств, трафик без отдельного лимита.</p><div class="tariffs" id="tariff-list"></div></section>
+      <section class="section" id="tariffs"><h2>Цены и тарифы</h2><p class="muted">Выберите подходящий период.</p><div class="tariffs" id="tariff-list"></div></section>
       <section class="section"><h2>Как получить ключ</h2><div class="steps">
         <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
         <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
@@ -432,10 +432,6 @@
       if (shop.notice) { notice.hidden = false; notice.textContent = shop.notice; }
       document.getElementById("cabinet-link").href = me.email ? "/cabinet" : "/login";
       const list = document.getElementById("tariff-list");
-      const note = document.getElementById("tariff-note");
-      if (plans.length) {
-        note.textContent = `${plans.map((plan) => `${plan.title}: ${rub(plan.priceRub)} за ${plan.days} дней`).join(". ")}. Одна подписка — до 3 устройств. Трафик без отдельного лимита. Это та сумма, которую спишет оплата.`;
-      }
       plans.forEach((plan, index) => {
         const next = `/cabinet?plan=${encodeURIComponent(plan.id)}`;
         list.append(tariffCard(plan, index, plans.length, me.email ? next : `/login?next=${encodeURIComponent(next)}`));
