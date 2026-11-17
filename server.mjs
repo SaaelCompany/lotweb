@@ -73,6 +73,13 @@ SMTP_FROM=
 loadEnv(join(root, ".env"));
 
 const PORT = Number(process.env.PORT || 3000);
+const DEVICE_LIMIT = 3;
+const CATALOG_MARK = "2026-11-17-v1";
+const CATALOG = [
+  ["m1", "1 месяц", 30, 150, 1],
+  ["m2", "2 месяца", 60, 300, 2],
+  ["m3", "3 месяца", 90, 430, 3],
+];
 const BIND = process.env.BIND === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
 const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
 const DAY = 86400000;
@@ -164,8 +171,12 @@ const SCHEMA = [
   )`,
   `create index if not exists login_limits_bucket_idx on login_limits (bucket, created_at)`,
   `insert into plans (id, title, days, price_rub, traffic_gb, sort)
-   values ('m1', '30 дней', 30, 249, 0, 1), ('m3', '90 дней', 90, 599, 0, 2), ('m6', '180 дней', 180, 999, 0, 3)
+   values ('m1', '1 месяц', 30, 150, 0, 1), ('m2', '2 месяца', 60, 300, 0, 2), ('m3', '3 месяца', 90, 430, 0, 3)
    on conflict (id) do nothing`,
+  `create table if not exists shop_meta (
+    key text primary key,
+    value text not null
+  )`,
 ];
 
 function env(name) {
@@ -280,6 +291,7 @@ async function localDb() {
 async function startLocal() {
   const db = new PGlite();
   for (const statement of SCHEMA) await db.exec(statement);
+  await ensureCatalog(async (text, params = []) => (await db.query(text, params)).rows);
   return db;
 }
 
@@ -289,9 +301,29 @@ async function applyPostgresSchema() {
   await client.connect();
   try {
     for (const statement of SCHEMA) await client.query(statement);
+    await ensureCatalog(async (text, params = []) => (await client.query(text, params)).rows);
   } finally {
     await client.end();
   }
+}
+
+async function ensureCatalog(query) {
+  const mark = await query("select value from shop_meta where key = 'catalog'");
+  if (mark[0]?.value === CATALOG_MARK) return;
+  for (const [id, title, days, price, sort] of CATALOG) {
+    await query(
+      `insert into plans (id, title, days, price_rub, traffic_gb, sort, active)
+       values ($1, $2, $3, $4, 0, $5, true)
+       on conflict (id) do update set title = excluded.title, days = excluded.days, price_rub = excluded.price_rub,
+         traffic_gb = 0, sort = excluded.sort, active = true`,
+      [id, title, days, price, sort],
+    );
+  }
+  await query("update plans set active = false where id not in ('m1', 'm2', 'm3')");
+  await query(
+    "insert into shop_meta (key, value) values ('catalog', $1) on conflict (key) do update set value = excluded.value",
+    [CATALOG_MARK],
+  );
 }
 
 function sha(value) {
@@ -684,7 +716,7 @@ async function issueClient(input) {
     subId: input.subId,
     totalGB: input.totalBytes,
     expiryTime: input.expiryTime,
-    limitIp: 0,
+    limitIp: DEVICE_LIMIT,
     tgId: 0,
     enable: true,
     comment: input.comment,
@@ -784,13 +816,15 @@ async function updateClient(current, overrides) {
 async function extendClientTo(input) {
   const current = await findClient(input.email);
   if (!current) throw new Error("Ключ не найден в панели");
-  if (current.expiresAtMs + 5000 >= input.expiryTime && current.enable !== false) return current;
   const totalBytes = input.addGb <= 0 ? 0 : (Number(current.raw.totalGB) || 0) + input.addGb * 1024 * 1024 * 1024;
+  const sameTerm = current.expiresAtMs + 5000 >= input.expiryTime && current.enable !== false && Number(current.raw?.limitIp) === DEVICE_LIMIT;
+  if (sameTerm && input.addGb <= 0) return current;
   return updateClient(current, {
     email: input.email,
     expiryTime: input.expiryTime,
     totalGB: totalBytes,
     enable: true,
+    limitIp: DEVICE_LIMIT,
     comment: input.comment,
   });
 }
@@ -1007,6 +1041,8 @@ function plategaRedirect(value) {
 }
 
 async function startPlatega(order, user, origin) {
+  const email = normalizeEmail(user.email);
+  if (!email) return { error: "Для оплаты нужна почта покупателя", status: 400 };
   const response = await fetch(plategaEndpoint(), {
     method: "POST",
     headers: {
@@ -1018,12 +1054,12 @@ async function startPlatega(order, user, origin) {
     body: JSON.stringify({
       paymentMethod: plategaMethod(),
       paymentDetails: { amount: order.amount_rub, currency: "RUB" },
-      description: `Ключ VPN, ${order.plan_title}`.slice(0, 180),
+      description: `Подписка LotVPN, ${order.plan_title}, ${order.plan_days} дней, до ${DEVICE_LIMIT} устройств`.slice(0, 180),
       return: `${origin}/pay/success?order=${order.id}`,
       failedUrl: `${origin}/pay/fail?order=${order.id}`,
       payload: order.id,
       orderId: order.id,
-      metadata: { user_email: user.email, userId: user.id },
+      metadata: { user_email: email, userId: user.id },
     }),
   });
   const data = await response.json().catch(() => null);
@@ -1383,6 +1419,8 @@ function orderJson(order, key) {
     kind: order.kind,
     amountRub: order.amount_rub,
     planTitle: order.plan_title,
+    planDays: order.plan_days,
+    deviceLimit: DEVICE_LIMIT,
     demo: order.demo,
     practice: !liveCheckout(),
     lastError: order.last_error,

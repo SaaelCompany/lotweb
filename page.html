@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Лот — ключи VPN</title>
+  <title>LotVPN</title>
   <link rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
   <style>
@@ -30,7 +30,12 @@
     .step-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
     .step-no { margin:0 0 8px; color:var(--muted); font-size:13px; }
     .site-footer { background:#161616; color:#c8c8c8; margin-top:48px; }
-    .site-footer .wrap { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:28px; padding:36px 0 42px; }
+    .site-footer .wrap { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:28px; padding:36px 0 42px; }
+    .doc { background:#fff; border:1px solid var(--line); border-radius:8px; padding:22px; }
+    .doc h2 { margin:18px 0 6px; font-size:16px; }
+    .doc p, .doc li { margin:0 0 8px; }
+    .doc ol { margin:0; padding-left:20px; }
+    .doc a { text-decoration:underline; }
     .site-footer h2 { color:#fff; font-size:16px; margin:0 0 8px; }
     .site-footer a { color:#fff; }
     .orders { display:grid; gap:8px; }
@@ -65,18 +70,19 @@
   </style>
 </head>
 <body>
-  <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">Лот</a><nav class="nav" id="nav"></nav></div></header>
+  <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">LotVPN</a><nav class="nav" id="nav"></nav></div></header>
   <main id="view"></main>
   <footer class="site-footer"><div class="wrap">
-    <div><h2>Лот</h2><p>Ключи VPN для телефона и компьютера. Срок выбираете на сайте, оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
-    <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p></div>
-    <div><h2>Если деньги списались</h2><p>Ключ создаётся после уведомления Platega. Откройте кабинет с той же почты: счёт будет виден там, пока ключ не выдан.</p></div>
+    <div><h2>LotVPN</h2><p>Подписка на ключ для телефона и компьютера. На сайте указаны срок, цена и лимит в 3 устройства. Оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
+    <div><h2>Документы</h2><p><a href="/privacy">Политика конфиденциальности</a></p><p><a href="/terms">Пользовательское соглашение</a></p><p><a href="/#tariffs">Цены и тарифы</a></p></div>
+    <div><h2>Поддержка</h2><p>Telegram: <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a></p><p>Это личный аккаунт поддержки, не группа.</p></div>
+    <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p><p>Если деньги списались, откройте кабинет с той же почты.</p></div>
   </div></footer>
 
   <template id="tpl-home">
     <section class="hero-band"><div class="wrap hero-grid"><div class="hero">
-      <p class="kicker">VPN</p><h1>Ключ после оплаты</h1>
-      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Новый ключ или продление старого появляется в кабинете.</p>
+      <p class="kicker">LotVPN</p><h1>Ключ после оплаты</h1>
+      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Одна подписка работает на 3 устройствах. Новый ключ или продление старого появляется в кабинете.</p>
       <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок</a><a class="ghost" id="cabinet-link" href="/login">Открыть кабинет</a></div>
     </div><aside class="card facts">
       <div class="fact"><strong>Вход по почте</strong><span class="muted">Кабинет открывается сразу, письмо с кодом не отправляется.</span></div>
@@ -85,7 +91,7 @@
     </aside></div></section>
     <div class="wrap">
       <p class="notice" id="notice" hidden></p>
-      <section class="section" id="tariffs"><h2>Тарифы</h2><p class="muted">Цена на этой странице — та, которую спишет Platega.</p><div class="tariffs" id="tariff-list"></div></section>
+      <section class="section" id="tariffs"><h2>Цены и тарифы</h2><p class="muted" id="tariff-note">Сумма на карточке — это плата за подписку LotVPN на указанный срок. Одна подписка — до 3 устройств, трафик без отдельного лимита.</p><div class="tariffs" id="tariff-list"></div></section>
       <section class="section"><h2>Как получить ключ</h2><div class="steps">
         <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
         <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
@@ -121,7 +127,9 @@
   <template id="tpl-pay">
     <div class="wrap section"><div class="card stack" style="max-width:440px">
       <p class="kicker" id="inv"></p><h1 id="title"></h1><p class="price" id="price"></p>
+      <p id="offer"></p>
       <p class="muted" id="hint"></p>
+      <p class="muted">Оплачивая, вы принимаете <a href="/terms">пользовательское соглашение</a> и <a href="/privacy">политику конфиденциальности</a>. Поддержка: <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</p>
       <p class="notice" id="demo-note" hidden></p>
       <button id="pay" class="btn full" type="button"></button><p id="err" class="error"></p>
     </div></div>
@@ -149,6 +157,116 @@
 
   <template id="tpl-denied">
     <div class="wrap section"><div class="card"><h1>Нет доступа</h1><p class="muted">Эта почта не указана в ADMIN_EMAIL. Добавьте её в .env и перезапустите сайт.</p></div></div>
+  </template>
+
+  <template id="tpl-privacy">
+    <div class="wrap section"><p class="kicker">LotVPN</p><h1>Политика конфиденциальности</h1>
+      <p class="muted">Редакция от 17 ноября 2026 года</p>
+      <article class="doc">
+        <p>Политика конфиденциальности регулирует сбор, использование и защиту информации пользователей сервиса LotVPN. Собираются почта, технические данные и история заказов. Данные используются для работы сервиса, оплаты и поддержки. Передача третьим лицам возможна для проведения платежа, по закону или с согласия пользователя. Пользователь сам несёт риск передачи данных через интернет. Продолжение использования сервиса после изменения Политики означает согласие с новой редакцией.</p>
+        <h2>1. Общие положения</h2>
+        <ol>
+          <li>Настоящая Политика конфиденциальности (далее — «Политика») регулирует порядок обработки и защиты информации, которую Пользователь передаёт при использовании сервиса LotVPN (далее — «Сервис»).</li>
+          <li>Используя Сервис, Пользователь подтверждает своё согласие с условиями Политики. Если Пользователь не согласен с условиями, он обязан прекратить использование Сервиса.</li>
+        </ol>
+        <h2>2. Сбор информации</h2>
+        <ol>
+          <li>Сервис может собирать адрес электронной почты, по которому открывается кабинет; технические данные (IP-адрес, сведения о браузере, устройстве и операционной системе); историю заказов и обращений в поддержку.</li>
+          <li>Сервис не требует паспортных данных, фотографий документов и иной информации сверх почты, нужной для входа, оплаты и выдачи подписки.</li>
+        </ol>
+        <h2>3. Использование информации</h2>
+        <ol>
+          <li>Информация используется для работы кабинета, выдачи и продления подписки, связи с Пользователем, поддержки и проведения платежа. Почта, указанная при входе, передаётся платёжному провайдеру как идентификатор покупателя и повторяется в каждом его платеже.</li>
+        </ol>
+        <h2>4. Передача информации третьим лицам</h2>
+        <ol>
+          <li>Администрация не передаёт полученные данные третьим лицам, за исключением случаев, когда это требуется по закону, необходимо для исполнения заказа (платёжный провайдер получает почту покупателя, сумму и описание тарифа) или Пользователь сам дал согласие.</li>
+        </ol>
+        <h2>5. Хранение и защита данных</h2>
+        <ol>
+          <li>Данные хранятся в течение срока, необходимого для работы Сервиса и исполнения оплаченных заказов.</li>
+          <li>Администрация принимает разумные меры для защиты данных, но не гарантирует абсолютную безопасность информации при передаче через интернет.</li>
+        </ol>
+        <h2>6. Отказ от ответственности</h2>
+        <ol>
+          <li>Пользователь понимает и соглашается, что передача информации через интернет всегда сопряжена с рисками.</li>
+          <li>Администрация не несёт ответственности за утрату, кражу или раскрытие данных, если это произошло по вине третьих лиц или самого Пользователя.</li>
+        </ol>
+        <h2>7. Изменения в Политике</h2>
+        <ol>
+          <li>Администрация вправе изменять условия Политики без предварительного уведомления.</li>
+          <li>Актуальная редакция публикуется на этой странице. Продолжение использования Сервиса после изменений означает согласие Пользователя с новой редакцией.</li>
+        </ol>
+        <h2>8. Контакты</h2>
+        <p>Поддержка Сервиса: Telegram <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</p>
+      </article>
+    </div>
+  </template>
+
+  <template id="tpl-terms">
+    <div class="wrap section"><p class="kicker">LotVPN</p><h1>Пользовательское соглашение</h1>
+      <p class="muted">Редакция от 17 ноября 2026 года</p>
+      <article class="doc">
+        <h2>1. Общие положения</h2>
+        <ol>
+          <li>Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует использование онлайн-сервиса LotVPN (далее — «Сервис»), предоставляемого Администрацией.</li>
+          <li>Вход по почте, оформление заказа или оплата означают, что Пользователь ознакомился с Соглашением и принимает его в полном объёме.</li>
+          <li>В случае несогласия с условиями Пользователь обязан прекратить использование Сервиса.</li>
+        </ol>
+        <h2>2. Характер услуг</h2>
+        <ol>
+          <li>Сервис предоставляет цифровой доступ: ключ подписки LotVPN на выбранный и оплаченный срок.</li>
+          <li>До оплаты на сайте указаны цена, срок и состав тарифа. На дату этой редакции тарифы такие: 150 ₽ за 1 месяц (30 дней), 300 ₽ за 2 месяца (60 дней), 430 ₽ за 3 месяца (90 дней).</li>
+          <li>Одна подписка рассчитана на одновременное использование не более чем на 3 устройствах. Отдельная квота трафика в рамках оплаченного срока не устанавливается.</li>
+          <li>Ключ появляется в кабинете по той почте, с которой оформлен заказ. Продление прибавляет оплаченные дни к оставшемуся сроку той же подписки.</li>
+          <li>Пользователь понимает, что услуга нематериальная: её ценность в доступе на оплаченный срок, а не в передаче вещи.</li>
+        </ol>
+        <h2>3. Отказ от гарантий и ответственности</h2>
+        <ol>
+          <li>Сервис предоставляется на условиях «как есть».</li>
+          <li>Администрация не гарантирует соответствие Сервиса ожиданиям Пользователя и бесперебойную работу.</li>
+          <li>Администрация не несёт ответственности за прямые и косвенные убытки, действия третьих лиц и временные технические сбои.</li>
+          <li>Решения об использовании доступа Пользователь принимает самостоятельно и на свой риск.</li>
+        </ol>
+        <h2>4. Законность использования</h2>
+        <ol>
+          <li>Сервис не предназначен для противоправной деятельности.</li>
+          <li>Пользователь обязуется использовать Сервис в рамках применимого законодательства и правил третьих сторон.</li>
+          <li>Ответственность за законность использования доступа полностью возлагается на Пользователя.</li>
+        </ol>
+        <h2>5. Интеллектуальная собственность</h2>
+        <ol>
+          <li>Материалы Сервиса охраняются законодательством об интеллектуальной собственности.</li>
+          <li>Пользователю запрещается копировать, распространять и перепродавать материалы Сервиса без разрешения правообладателя. Выданный ключ предназначен для личного использования на не более чем 3 устройствах.</li>
+        </ol>
+        <h2>6. Ограничение доступа</h2>
+        <ol>
+          <li>Администрация вправе ограничить доступ при нарушении Соглашения, злоупотреблениях или по требованию закона либо платёжного провайдера.</li>
+          <li>Ограничение доступа не отменяет обязательства, возникшие раньше.</li>
+        </ol>
+        <h2>7. Платежи и возвраты</h2>
+        <ol>
+          <li>Оплата производится по цене и описанию тарифа, которые показаны на сайте до платежа. В платёж передаётся почта покупателя.</li>
+          <li>После фактической выдачи ключа возврат не производится: цифровая услуга считается оказанной.</li>
+          <li>Возврат возможен, если услуга не оказана по технической вине Сервиса и доступ фактически не предоставлен.</li>
+          <li>Для рассмотрения возврата Пользователь обращается в поддержку в течение 24 часов с момента оплаты.</li>
+          <li>Решение о возврате принимает Администрация.</li>
+          <li>Пользователь обязуется не инициировать возврат платежа через платёжную систему, не обратившись сначала в поддержку Сервиса.</li>
+        </ol>
+        <h2>8. Конфиденциальность</h2>
+        <ol>
+          <li>Порядок обработки данных описан в <a href="/privacy">политике конфиденциальности</a>.</li>
+        </ol>
+        <h2>9. Изменение условий</h2>
+        <ol>
+          <li>Администрация вправе изменять Соглашение. Актуальная версия публикуется на этой странице.</li>
+          <li>Продолжение использования Сервиса означает согласие с обновлёнными условиями.</li>
+        </ol>
+        <h2>10. Контактная информация</h2>
+        <p>По вопросам оплаты, доступа и возврата: Telegram <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</p>
+        <p>Используя Сервис, Пользователь подтверждает, что ознакомился с Соглашением и принимает его условия.</p>
+      </article>
+    </div>
   </template>
 
   <template id="tpl-missing">
@@ -254,7 +372,12 @@
       if (total >= 3 && index === 1) article.append(el("span", "badge", "Обычно берут"));
       article.append(el("h3", "", plan.title), el("p", "price", rub(plan.priceRub)));
       const list = el("ul", "features");
-      list.append(el("li", "", `${plan.days} дней`), el("li", "", plan.trafficGb > 0 ? `${plan.trafficGb} ГБ` : "Трафик без лимита"), el("li", "", "Продление того же ключа"));
+      list.append(
+        el("li", "", `${rub(plan.priceRub)} за ${plan.days} дней`),
+        el("li", "", "До 3 устройств"),
+        el("li", "", plan.trafficGb > 0 ? `${plan.trafficGb} ГБ` : "Трафик без лимита"),
+        el("li", "", "Продление того же ключа"),
+      );
       const link = Object.assign(el("a", "btn full", "Купить"), { href });
       article.append(list, link);
       return article;
@@ -268,6 +391,10 @@
       if (shop.notice) { notice.hidden = false; notice.textContent = shop.notice; }
       document.getElementById("cabinet-link").href = me.email ? "/cabinet" : "/login";
       const list = document.getElementById("tariff-list");
+      const note = document.getElementById("tariff-note");
+      if (plans.length) {
+        note.textContent = `${plans.map((plan) => `${plan.title}: ${rub(plan.priceRub)} за ${plan.days} дней`).join(". ")}. Одна подписка — до 3 устройств. Трафик без отдельного лимита. Это та сумма, которую спишет оплата.`;
+      }
       plans.forEach((plan, index) => {
         const next = `/cabinet?plan=${encodeURIComponent(plan.id)}`;
         list.append(tariffCard(plan, index, plans.length, me.email ? next : `/login?next=${encodeURIComponent(next)}`));
@@ -294,7 +421,7 @@
     function planButton(plan, intent, err) {
       const button = el("button", "plan");
       button.type = "button";
-      button.append(el("span", "", plan.title), el("strong", "", rub(plan.priceRub)), el("small", "", "Перейти к оплате"));
+      button.append(el("span", "", plan.title), el("strong", "", rub(plan.priceRub)), el("small", "", `${plan.days} дней, до 3 устройств`));
       button.onclick = async () => {
         err.textContent = "";
         button.disabled = true;
@@ -336,7 +463,7 @@
           const card = el("article", "key");
           const head = el("div", "key-head");
           head.append(el("h3", "", key.label), el("span", pill[0], pill[1]));
-          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)));
+          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)), el("p", "muted", "До 3 устройств на эту подписку."));
           if (key.demo) card.append(el("p", "notice", "Образец. Панель 3x-ui не подключена, эта ссылка никуда не ведёт."));
           const row = el("div", "row");
           const copy = el("button", "ghost", "Скопировать подписку");
@@ -467,7 +594,7 @@
       });
       const list = document.getElementById("plan-list");
       (data.plans || []).forEach((plan) => list.append(planForm(plan, false)));
-      planForm({ id: "", title: "", days: 30, priceRub: 249, trafficGb: 0, sort: 10, active: true }, true);
+      planForm({ id: "", title: "", days: 30, priceRub: 150, trafficGb: 0, sort: 10, active: true }, true);
     }
 
     async function showPay(me, id) {
@@ -477,14 +604,16 @@
       if (data.status === "paid") { location.href = `/pay/success?order=${id}`; return; }
       mount("tpl-pay");
       document.getElementById("inv").textContent = `Счёт ${data.invId}`;
-      document.getElementById("title").textContent = data.kind === "renew" ? "Продление" : "Новый ключ";
+      document.getElementById("title").textContent = data.kind === "renew" ? "Продление подписки" : "Новая подписка";
       document.getElementById("price").textContent = rub(data.amountRub);
+      const days = Number(data.planDays) || 0;
+      document.getElementById("offer").textContent = `${rub(data.amountRub)} за ${data.planTitle || "подписку LotVPN"}${days ? `, ${days} дней` : ""}, до ${data.deviceLimit || 3} устройств.`;
       const hint = document.getElementById("hint");
       const note = document.getElementById("demo-note");
       const button = document.getElementById("pay");
       const err = document.getElementById("err");
       if (data.practice) {
-        hint.textContent = `Ключ VPN, ${data.planTitle}. Деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui.`;
+        hint.textContent = `Подписка LotVPN «${data.planTitle}». Деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui, до 3 устройств.`;
         button.textContent = "Провести демо-оплату";
         button.onclick = async () => {
           err.textContent = "";
@@ -493,7 +622,7 @@
           location.href = `/pay/success?order=${id}`;
         };
       } else {
-        hint.textContent = `Ключ VPN, ${data.planTitle}. После оплаты он появится в кабинете.`;
+        hint.textContent = `После оплаты ключ появится в кабинете этой почты. Почта передаётся в платёж как идентификатор покупателя.`;
         button.textContent = "Оплатить через Platega";
         button.onclick = async () => {
           err.textContent = "";
@@ -557,6 +686,8 @@
       if (path === "/admin") return showAdmin(me);
       if (path === "/pay/success") return showSuccess(me);
       if (path === "/pay/fail") return mount("tpl-fail");
+      if (path === "/privacy") return mount("tpl-privacy");
+      if (path === "/terms") return mount("tpl-terms");
       if (pay) return showPay(me, pay[1]);
       mount("tpl-missing");
     }
