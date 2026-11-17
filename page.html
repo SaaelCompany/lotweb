@@ -28,7 +28,18 @@
     .section { padding:36px 0 12px; }
     .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
     .know { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
-    .hero-intro { padding:48px 0 56px; }
+    .hero-intro { padding:20px 0 24px; }
+    .hero-intro h1 { font-size:28px; }
+    .hero-intro .lede { margin:2px 0 0; font-size:15px; }
+    .hero-intro .steps, .hero-intro .know { gap:8px; margin-top:8px; }
+    .hero-intro .know { grid-template-columns:repeat(4,1fr); }
+    .hero-intro .step-card { padding:10px 12px; }
+    .hero-intro .step-card h3 { font-size:14px; line-height:1.3; }
+    .hero-intro .step-card p { margin:4px 0 0; font-size:13px; line-height:1.35; }
+    .hero-intro .step-no { display:inline; margin:0 4px 0 0; font-size:13px; color:var(--muted); }
+    .hero-intro .ready { margin:10px 0 0; font-size:14px; font-weight:600; }
+    .hero-intro h2 { margin-top:14px; }
+    .hero-intro .hero-actions { margin-top:12px; }
     .ready { margin:18px 0 0; font-weight:650; }
     .step-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
     .step-no { margin:0 0 8px; color:var(--muted); font-size:13px; }
@@ -70,7 +81,7 @@
     .admin-row .error { grid-column:1 / -1; }
     .check { display:flex; align-items:center; gap:6px; white-space:nowrap; } .check input { width:auto; }
     button:focus-visible, a:focus-visible, input:focus { outline:2px solid #111; outline-offset:2px; }
-    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .know, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1 { font-size:32px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
+    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .know, .hero-intro .know, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1, .hero-intro h1 { font-size:26px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
   </style>
 </head>
 <body>
@@ -85,16 +96,15 @@
 
   <template id="tpl-home">
     <section class="hero-band"><div class="wrap hero-intro">
-      <p class="kicker">LotVPN</p>
       <h1>Как получить VPN?</h1>
       <p class="lede">Всего 3 простых шага:</p>
       <div class="steps">
-        <article class="step-card"><p class="step-no">1</p><h3>Выберите срок подписки</h3><p class="muted">Выберите, на какой срок хотите подключить VPN.</p></article>
-        <article class="step-card"><p class="step-no">2</p><h3>Укажите свою электронную почту</h3><p class="muted">Введите действующий адрес почты. На него будет привязан ваш личный кабинет и VPN-подписка.</p></article>
-        <article class="step-card"><p class="step-no">3</p><h3>Оплатите подписку</h3><p class="muted">Нажмите кнопку оплаты и завершите платёж через Platega.</p></article>
+        <article class="step-card"><h3><span class="step-no">1.</span>Выберите срок подписки</h3><p class="muted">Выберите, на какой срок хотите подключить VPN.</p></article>
+        <article class="step-card"><h3><span class="step-no">2.</span>Укажите свою электронную почту</h3><p class="muted">Введите действующий адрес почты. На него будет привязан ваш личный кабинет и VPN-подписка.</p></article>
+        <article class="step-card"><h3><span class="step-no">3.</span>Оплатите подписку</h3><p class="muted">Нажмите кнопку оплаты и завершите платёж через Platega.</p></article>
       </div>
       <p class="ready">Готово! После оплаты ваш VPN-ключ появится в личном кабинете. Как добавить его в приложение — в <a href="/setup">инструкции для Happ и Incy</a>.</p>
-      <h2 style="margin-top:32px">Что важно знать?</h2>
+      <h2>Что важно знать?</h2>
       <div class="know">
         <article class="step-card"><h3>До 4 устройств</h3><p class="muted">Одну подписку можно использовать одновременно на 4 устройствах.</p></article>
         <article class="step-card"><h3>Новый ключ или продление</h3><p class="muted">После оплаты вы получите новый VPN-ключ. Если у вас уже есть подписка, можно продлить её — новые дни добавятся к оставшемуся сроку.</p></article>
