@@ -36,6 +36,7 @@
     .doc p, .doc li { margin:0 0 8px; }
     .doc ol { margin:0; padding-left:20px; }
     .doc a { text-decoration:underline; }
+    .doc code { font-family:ui-monospace,monospace; font-size:0.92em; }
     .site-footer h2 { color:#fff; font-size:16px; margin:0 0 8px; }
     .site-footer a { color:#fff; }
     .orders { display:grid; gap:8px; }
@@ -74,7 +75,7 @@
   <main id="view"></main>
   <footer class="site-footer"><div class="wrap">
     <div><h2>LotVPN</h2><p>Подписка на ключ для телефона и компьютера. На сайте указаны срок, цена и лимит в 3 устройства. Оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
-    <div><h2>Документы</h2><p><a href="/privacy">Политика конфиденциальности</a></p><p><a href="/terms">Пользовательское соглашение</a></p><p><a href="/#tariffs">Цены и тарифы</a></p></div>
+    <div><h2>Документы</h2><p><a href="/privacy">Политика конфиденциальности</a></p><p><a href="/terms">Пользовательское соглашение</a></p><p><a href="/setup">Как подключить Happ и Incy</a></p><p><a href="/#tariffs">Цены и тарифы</a></p></div>
     <div><h2>Поддержка</h2><p>Telegram: <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a></p><p>Это личный аккаунт поддержки, не группа.</p></div>
     <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p><p>Если деньги списались, откройте кабинет с той же почты.</p></div>
   </div></footer>
@@ -95,7 +96,7 @@
       <section class="section"><h2>Как получить ключ</h2><div class="steps">
         <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
         <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
-        <article class="step-card"><p class="step-no">03</p><h3>Кабинет</h3><p class="muted">Ссылка подписки и QR появляются у этой почты.</p></article>
+        <article class="step-card"><p class="step-no">03</p><h3>Кабинет</h3><p class="muted">Ссылка подписки и QR появляются у этой почты. Дальше их добавляют в <a href="/setup">Happ или Incy</a>.</p></article>
       </div></section>
     </div>
   </template>
@@ -114,6 +115,7 @@
       <div class="stack">
         <div id="pending-block" hidden><h2>Ожидают ключ</h2><div class="orders" id="pending"></div></div>
         <h2>Ваши ключи</h2>
+        <p class="muted">Ссылку из кабинета добавляют в приложение. <a href="/setup">Инструкция для Happ и Incy</a>.</p>
         <p class="muted" id="empty">Пока пусто. Ниже можно купить первый ключ.</p>
         <div class="keys" id="keys"></div>
         <section class="card stack" id="buy"><h2 id="intent-title" style="margin:0">Новый ключ</h2><p id="intent-hint" class="muted" style="margin:0">Появится отдельный ключ. Старые останутся в списке.</p>
@@ -157,6 +159,45 @@
 
   <template id="tpl-denied">
     <div class="wrap section"><div class="card"><h1>Нет доступа</h1><p class="muted">Эта почта не указана в ADMIN_EMAIL. Добавьте её в .env и перезапустите сайт.</p></div></div>
+  </template>
+
+  <template id="tpl-setup">
+    <div class="wrap section"><p class="kicker">LotVPN</p><h1>Как добавить подключение</h1>
+      <p class="muted">После оплаты в кабинете есть ссылка подписки и QR. Одна и та же ссылка подходит для Happ и Incy. На одну подписку можно подключить до 3 устройств.</p>
+      <article class="doc">
+        <h2>Что копировать</h2>
+        <ol>
+          <li>Откройте кабинет с той почты, которой оплачивали.</li>
+          <li>Нажмите «Скопировать подписку». В буфер должна попасть вся строка, от <code>https://</code> до конца. Не переписывайте её вручную.</li>
+          <li>QR рядом с ключом — та же ссылка. Он нужен, когда ключ открыт на компьютере, а приложение стоит на телефоне.</li>
+        </ol>
+        <h2>Happ</h2>
+        <p>Приложение ставится на iPhone, Android, Windows и Mac.</p>
+        <ol>
+          <li>Скопируйте ссылку в кабинете. На телефоне можно нажать «Добавить в Happ»: приложение откроется и заберёт эту ссылку само. Если вместо Happ открылся браузер, приложения на этом устройстве нет.</li>
+          <li>Если кнопки нет или она не сработала, откройте Happ и нажмите «+» в правом верхнем углу.</li>
+          <li>Выберите «Из буфера обмена». В других версиях пункт называется «Вставить», «Импорт из буфера» или «Добавить из буфера».</li>
+          <li>На iPhone система спросит разрешение на вставку. Нажмите «Разрешить», иначе Happ получит пустую строку.</li>
+          <li>Другой способ: «+» → сканирование QR и камера на код из кабинета.</li>
+          <li>В списке появится подписка. Выберите сервер и включите подключение.</li>
+        </ol>
+        <h2>Incy</h2>
+        <p>Приложение ставится на iPhone, Android и компьютер. Ссылка от LotVPN та же, что для Happ.</p>
+        <ol>
+          <li>Скопируйте ссылку подписки в кабинете.</li>
+          <li>Откройте Incy, нажмите «+», затем «Добавить подписку» и вставьте ссылку. В части версий этот пункт называется «Импорт из буфера обмена».</li>
+          <li>Либо нажмите «+» и отсканируйте QR из кабинета.</li>
+          <li>Дождитесь списка серверов, выберите сервер и включите подключение.</li>
+        </ol>
+        <h2>Если подписка не добавилась</h2>
+        <ol>
+          <li>Скопируйте ссылку ещё раз на том же устройстве, где стоит приложение, и проверьте, что она начинается с <code>https://</code>.</li>
+          <li>На iPhone заново разрешите вставку из буфера.</li>
+          <li>Та же ссылка второй раз не добавляется. Обновите уже существующую подписку в приложении, а не создавайте копию.</li>
+          <li>Если список серверов пустой, напишите в поддержку: Telegram <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</li>
+        </ol>
+      </article>
+    </div>
   </template>
 
   <template id="tpl-privacy">
@@ -470,6 +511,8 @@
           copy.type = "button";
           copy.onclick = () => copyText(key.subscriptionUrl, copy);
           row.append(copy);
+          if (/^https?:\/\//.test(key.subscriptionUrl || "")) row.append(Object.assign(el("a", "ghost", "Добавить в Happ"), { href: `happ://add/${key.subscriptionUrl}` }));
+          row.append(Object.assign(el("a", "ghost", "Инструкция"), { href: "/setup" }));
           if (key.shareLink) {
             const share = el("button", "ghost", "Скопировать ссылку");
             share.type = "button";
@@ -666,7 +709,9 @@
         const copy = el("button", "ghost", "Скопировать подписку");
         copy.type = "button";
         copy.onclick = () => copyText(data.key.subscriptionUrl, copy);
-        row.append(copy, Object.assign(el("a", "btn", "Открыть кабинет"), { href: "/cabinet" }));
+        row.append(copy);
+        if (/^https?:\/\//.test(data.key.subscriptionUrl || "")) row.append(Object.assign(el("a", "ghost", "Добавить в Happ"), { href: `happ://add/${data.key.subscriptionUrl}` }));
+        row.append(Object.assign(el("a", "ghost", "Как добавить в Happ или Incy"), { href: "/setup" }), Object.assign(el("a", "btn", "Открыть кабинет"), { href: "/cabinet" }));
         const img = el("img", "qr");
         img.alt = "";
         img.src = `/api/keys/${data.key.id}/qr`;
@@ -686,6 +731,7 @@
       if (path === "/admin") return showAdmin(me);
       if (path === "/pay/success") return showSuccess(me);
       if (path === "/pay/fail") return mount("tpl-fail");
+      if (path === "/setup") return mount("tpl-setup");
       if (path === "/privacy") return mount("tpl-privacy");
       if (path === "/terms") return mount("tpl-terms");
       if (pay) return showPay(me, pay[1]);
