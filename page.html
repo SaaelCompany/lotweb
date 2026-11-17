@@ -27,6 +27,9 @@
     .facts { display:grid; gap:16px; } .fact strong { display:block; margin-bottom:2px; }
     .section { padding:36px 0 12px; }
     .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
+    .know { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+    .hero-intro { padding:48px 0 56px; }
+    .ready { margin:18px 0 0; font-weight:650; }
     .step-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
     .step-no { margin:0 0 8px; color:var(--muted); font-size:13px; }
     .site-footer { background:#161616; color:#c8c8c8; margin-top:48px; }
@@ -67,7 +70,7 @@
     .admin-row .error { grid-column:1 / -1; }
     .check { display:flex; align-items:center; gap:6px; white-space:nowrap; } .check input { width:auto; }
     button:focus-visible, a:focus-visible, input:focus { outline:2px solid #111; outline-offset:2px; }
-    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1 { font-size:32px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
+    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .know, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1 { font-size:32px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
   </style>
 </head>
 <body>
@@ -81,23 +84,28 @@
   </div></footer>
 
   <template id="tpl-home">
-    <section class="hero-band"><div class="wrap hero-grid"><div class="hero">
-      <p class="kicker">LotVPN</p><h1>Ключ после оплаты</h1>
-      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Одна подписка работает на 4 устройствах. Новый ключ или продление старого появляется в кабинете.</p>
-      <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок</a><a class="ghost" id="cabinet-link" href="/login">Открыть кабинет</a></div>
-    </div><aside class="card facts">
-      <div class="fact"><strong>Вход по почте</strong><span class="muted">Кабинет открывается сразу, письмо с кодом не отправляется.</span></div>
-      <div class="fact"><strong>Оплата на сайте</strong><span class="muted">Сумму считает сервер и передаёт её в Platega.</span></div>
-      <div class="fact"><strong>Один ключ можно продлить</strong><span class="muted">Дни прибавляются к оставшемуся сроку, а не создают второй ключ.</span></div>
-    </aside></div></section>
+    <section class="hero-band"><div class="wrap hero-intro">
+      <p class="kicker">LotVPN</p>
+      <h1>Как получить VPN?</h1>
+      <p class="lede">Всего 3 простых шага:</p>
+      <div class="steps">
+        <article class="step-card"><p class="step-no">1</p><h3>Выберите срок подписки</h3><p class="muted">Выберите, на какой срок хотите подключить VPN.</p></article>
+        <article class="step-card"><p class="step-no">2</p><h3>Укажите свою электронную почту</h3><p class="muted">Введите действующий адрес почты. На него будет привязан ваш личный кабинет и VPN-подписка.</p></article>
+        <article class="step-card"><p class="step-no">3</p><h3>Оплатите подписку</h3><p class="muted">Нажмите кнопку оплаты и завершите платёж через Platega.</p></article>
+      </div>
+      <p class="ready">Готово! После оплаты ваш VPN-ключ появится в личном кабинете. Как добавить его в приложение — в <a href="/setup">инструкции для Happ и Incy</a>.</p>
+      <h2 style="margin-top:32px">Что важно знать?</h2>
+      <div class="know">
+        <article class="step-card"><h3>До 4 устройств</h3><p class="muted">Одну подписку можно использовать одновременно на 4 устройствах.</p></article>
+        <article class="step-card"><h3>Новый ключ или продление</h3><p class="muted">После оплаты вы получите новый VPN-ключ. Если у вас уже есть подписка, можно продлить её — новые дни добавятся к оставшемуся сроку.</p></article>
+        <article class="step-card"><h3>Вход в личный кабинет</h3><p class="muted">Просто введите свою электронную почту. Пароль и код подтверждения не нужны — кабинет откроется сразу.</p></article>
+        <article class="step-card"><h3>Без сложной оплаты</h3><p class="muted">Стоимость подписки рассчитывается автоматически. Вам останется только перейти к оплате через Platega.</p></article>
+      </div>
+      <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок подписки</a><a class="ghost" id="cabinet-link" href="/login">Открыть личный кабинет</a></div>
+    </div></section>
     <div class="wrap">
       <p class="notice" id="notice" hidden></p>
       <section class="section" id="tariffs"><h2>Цены и тарифы</h2><p class="muted">Выберите подходящий период.</p><div class="tariffs" id="tariff-list"></div></section>
-      <section class="section"><h2>Как получить ключ</h2><div class="steps">
-        <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
-        <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
-        <article class="step-card"><p class="step-no">03</p><h3>Кабинет</h3><p class="muted">Ссылка подписки и QR появляются у этой почты. Дальше их добавляют в <a href="/setup">Happ или Incy</a>.</p></article>
-      </div></section>
     </div>
   </template>
 
