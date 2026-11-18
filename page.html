@@ -16,11 +16,12 @@
     h1 { font-size:34px; line-height:1.2; } h2 { font-size:18px; }
     .wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
     .topbar { background:#fff; border-bottom:1px solid var(--line); }
-    .topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; }
-    .docs-bar { background:#fff; border-bottom:1px solid var(--line); }
-    .docs-inner { display:flex; flex-wrap:wrap; gap:8px; padding:10px 0; }
-    .logo { text-decoration:none; font-weight:700; font-size:18px; }
-    .nav { display:flex; align-items:center; gap:8px; }
+    .topbar-inner { display:flex; align-items:center; flex-wrap:wrap; gap:8px 22px; min-height:64px; }
+    .logo { text-decoration:none; font-weight:700; font-size:18px; flex:none; }
+    .doc-links { display:flex; align-items:center; gap:18px; flex:1 1 420px; min-width:0; }
+    .doc-links a { color:var(--muted); font-size:14px; text-decoration:none; white-space:nowrap; }
+    .doc-links a:hover { color:var(--ink); }
+    .nav { display:flex; align-items:center; gap:8px; margin-left:auto; flex:none; }
     .user { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
     .hero-band { background:#fff; border-bottom:1px solid var(--line); }
     .hero-grid { display:grid; grid-template-columns:1.25fr .75fr; gap:36px; align-items:center; padding:64px 0; }
@@ -84,15 +85,11 @@
     .admin-row .error { grid-column:1 / -1; }
     .check { display:flex; align-items:center; gap:6px; white-space:nowrap; } .check input { width:auto; }
     button:focus-visible, a:focus-visible, input:focus { outline:2px solid #111; outline-offset:2px; }
-    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .know, .hero-intro .know, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1, .hero-intro h1 { font-size:26px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
+    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .know, .hero-intro .know, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1, .hero-intro h1 { font-size:26px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } .topbar-inner { flex-wrap:wrap; row-gap:6px; min-height:0; padding:10px 0 12px; } .doc-links { order:3; width:100%; flex-direction:column; align-items:flex-start; gap:2px; } }
   </style>
 </head>
 <body>
-  <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">LotVPN</a><nav class="nav" id="nav"></nav></div></header>
-  <div class="docs-bar"><div class="wrap docs-inner">
-    <a class="ghost" href="/privacy">Политика конфиденциальности</a>
-    <a class="ghost" href="/terms">Пользовательское соглашение</a>
-  </div></div>
+  <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">LotVPN</a><nav class="doc-links" aria-label="Документы"><a href="/privacy">Политика конфиденциальности</a><a href="/terms">Пользовательское соглашение</a></nav><nav class="nav" id="nav"></nav></div></header>
   <main id="view"></main>
   <footer class="site-footer"><div class="wrap">
     <div><h2>LotVPN</h2><p>Подписка на ключ для телефона и компьютера. На сайте указаны срок, цена и лимит в 4 устройства. Оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
