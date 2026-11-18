@@ -17,6 +17,8 @@
     .wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
     .topbar { background:#fff; border-bottom:1px solid var(--line); }
     .topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; }
+    .docs-bar { background:#fff; border-bottom:1px solid var(--line); }
+    .docs-inner { display:flex; flex-wrap:wrap; gap:8px; padding:10px 0; }
     .logo { text-decoration:none; font-weight:700; font-size:18px; }
     .nav { display:flex; align-items:center; gap:8px; }
     .user { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
@@ -53,6 +55,7 @@
     .doc code { font-family:ui-monospace,monospace; font-size:0.92em; }
     .site-footer h2 { color:#fff; font-size:16px; margin:0 0 8px; }
     .site-footer a { color:#fff; }
+    .approv { grid-column:1 / -1; margin:8px 0 0; color:#fff; font-size:14px; }
     .orders { display:grid; gap:8px; }
     .order-line { display:flex; justify-content:space-between; gap:16px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
     .tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
@@ -86,12 +89,17 @@
 </head>
 <body>
   <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">LotVPN</a><nav class="nav" id="nav"></nav></div></header>
+  <div class="docs-bar"><div class="wrap docs-inner">
+    <a class="ghost" href="/privacy">Политика конфиденциальности</a>
+    <a class="ghost" href="/terms">Пользовательское соглашение</a>
+  </div></div>
   <main id="view"></main>
   <footer class="site-footer"><div class="wrap">
     <div><h2>LotVPN</h2><p>Подписка на ключ для телефона и компьютера. На сайте указаны срок, цена и лимит в 4 устройства. Оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
     <div><h2>Документы</h2><p><a href="/privacy">Политика конфиденциальности</a></p><p><a href="/terms">Пользовательское соглашение</a></p><p><a href="/setup">Как подключить Happ и Incy</a></p><p><a href="/#tariffs">Цены и тарифы</a></p></div>
     <div><h2>Поддержка</h2><p>Telegram: <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a></p><p>Это личный аккаунт поддержки, не группа.</p></div>
     <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p><p>Если деньги списались, откройте кабинет с той же почты.</p></div>
+    <p class="approv">approv</p>
   </div></footer>
 
   <template id="tpl-home">
@@ -115,7 +123,7 @@
     </div></section>
     <div class="wrap">
       <p class="notice" id="notice" hidden></p>
-      <section class="section" id="tariffs"><h2>Цены и тарифы</h2><p class="muted">Выберите подходящий период.</p><div class="tariffs" id="tariff-list"></div></section>
+      <section class="section" id="tariffs"><h2>Цены и тарифы</h2><p class="muted">Выберите подходящий период. Один платёж не больше 10 000 ₽.</p><div class="tariffs" id="tariff-list"></div></section>
     </div>
   </template>
 
@@ -270,7 +278,7 @@
 
   <template id="tpl-terms">
     <div class="wrap section"><p class="kicker">LotVPN</p><h1>Пользовательское соглашение</h1>
-      <p class="muted">Редакция от 17 ноября 2026 года</p>
+      <p class="muted">Редакция от 18 ноября 2026 года</p>
       <article class="doc">
         <h2>1. Общие положения</h2>
         <ol>
@@ -311,7 +319,7 @@
         </ol>
         <h2>7. Платежи и возвраты</h2>
         <ol>
-          <li>Оплата производится по цене и описанию тарифа, которые показаны на сайте до платежа. В платёж передаётся почта покупателя.</li>
+          <li>Оплата производится по цене и описанию тарифа, которые показаны на сайте до платежа. Один платёж не превышает 10 000 ₽. В платёж передаётся почта покупателя.</li>
           <li>После фактической выдачи ключа возврат не производится: цифровая услуга считается оказанной.</li>
           <li>Возврат возможен, если услуга не оказана по технической вине Сервиса и доступ фактически не предоставлен.</li>
           <li>Для рассмотрения возврата Пользователь обращается в поддержку в течение 24 часов с момента оплаты.</li>
@@ -586,7 +594,7 @@
         field("id", "Код", plan.id, (input) => { if (!create) input.readOnly = true; else { input.required = true; input.placeholder = "m12"; } }),
         field("title", "Название", plan.title, (input) => { input.required = true; }),
         field("days", "Дней", plan.days, (input) => { input.type = "number"; input.min = "1"; input.required = true; }),
-        field("priceRub", "Цена, ₽", plan.priceRub, (input) => { input.type = "number"; input.min = "1"; input.required = true; }),
+        field("priceRub", "Цена, ₽, до 10 000", plan.priceRub, (input) => { input.type = "number"; input.min = "1"; input.max = "10000"; input.required = true; }),
         field("trafficGb", "ГБ, 0 = без лимита", plan.trafficGb, (input) => { input.type = "number"; input.min = "0"; input.required = true; }),
         field("sort", "Порядок", plan.sort, (input) => { input.type = "number"; input.min = "0"; input.required = true; }),
       );

@@ -75,6 +75,7 @@ loadEnv(join(root, ".env"));
 const PORT = Number(process.env.PORT || 3000);
 const IP_LIMIT = 10;
 const DEVICE_LIMIT = 4;
+const PAYMENT_MAX_RUB = 10_000;
 const CATALOG_MARK = "2026-11-17-v1";
 const CATALOG = [
   ["m1", "1 месяц", 30, 150, 1],
@@ -962,7 +963,7 @@ async function savePlan(input) {
   if (!PLAN_RE.test(id)) return { error: "Код тарифа: латинские буквы и цифры, до 32 знаков", status: 400 };
   if (title.length < 1 || title.length > 80) return { error: "Название от 1 до 80 символов", status: 400 };
   if (!Number.isInteger(days) || days < 1 || days > 3650) return { error: "Срок от 1 до 3650 дней", status: 400 };
-  if (!Number.isInteger(price) || price < 1 || price > 1_000_000) return { error: "Цена от 1 до 1 000 000 ₽", status: 400 };
+  if (!Number.isInteger(price) || price < 1 || price > PAYMENT_MAX_RUB) return { error: "Цена от 1 до 10 000 ₽. Один платёж не может быть больше этой суммы.", status: 400 };
   if (!Number.isInteger(traffic) || traffic < 0 || traffic > 100_000) return { error: "Трафик укажите числом гигабайт. 0 значит без лимита.", status: 400 };
   if (!Number.isInteger(sort) || sort < 0 || sort > 10_000) return { error: "Порядок от 0 до 10000", status: 400 };
   if (input.create) {
@@ -1063,6 +1064,9 @@ async function createOrder({ userId, planId, kind, keyId }) {
   const plans = await sql("select id, title, days, price_rub, traffic_gb from plans where id = $1 and active = true", [planId]);
   const plan = plans[0];
   if (!plan) return { error: "Такого тарифа нет", status: 400 };
+  if (!Number.isInteger(Number(plan.price_rub)) || Number(plan.price_rub) < 1 || Number(plan.price_rub) > PAYMENT_MAX_RUB) {
+    return { error: "Сумма одного платежа не может быть больше 10 000 ₽", status: 400 };
+  }
   let savedKey = null;
   if (kind === "renew") {
     if (!keyId || !ID_RE.test(keyId)) return { error: "Выберите ключ, который нужно продлить", status: 400 };
@@ -1117,6 +1121,9 @@ function plategaRedirect(value) {
 async function startPlatega(order, user, origin) {
   const email = normalizeEmail(user.email);
   if (!email) return { error: "Для оплаты нужна почта покупателя", status: 400 };
+  if (!Number.isInteger(Number(order.amount_rub)) || Number(order.amount_rub) < 1 || Number(order.amount_rub) > PAYMENT_MAX_RUB) {
+    return { error: "Сумма одного платежа не может быть больше 10 000 ₽", status: 400 };
+  }
   const response = await fetch(plategaEndpoint(), {
     method: "POST",
     headers: {
