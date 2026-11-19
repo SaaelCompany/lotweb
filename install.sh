@@ -81,8 +81,12 @@ ${host} {
 	reverse_proxy 127.0.0.1:3000
 }
 EOF
+  echo "Обновляю Caddy для https://${host}"
   systemctl enable caddy
-  systemctl reload caddy 2>/dev/null || systemctl restart caddy
+  # reload без --no-block может ждать сертификат и не возвращать управление. Панель 3x-ui при этом не останавливаем.
+  if ! timeout 20 systemctl reload --no-block caddy 2>/dev/null; then
+    timeout 25 systemctl restart caddy || echo "Caddy не поднялся за 25 секунд. Сайт на 443 может не открыться, панель 3x-ui этот шаг не трогает."
+  fi
   if command -v ufw >/dev/null 2>&1 && ufw status | grep -q '^Status: active'; then
     ufw allow 80/tcp
     ufw allow 443/tcp

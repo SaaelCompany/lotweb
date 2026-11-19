@@ -73,6 +73,15 @@ SMTP_FROM=
 loadEnv(join(root, ".env"));
 
 const PORT = Number(process.env.PORT || 3000);
+const IP_LIMIT = 10;
+const DEVICE_LIMIT = 4;
+const PAYMENT_MAX_RUB = 10_000;
+const CATALOG_MARK = "2026-11-17-v1";
+const CATALOG = [
+  ["m1", "1 месяц", 30, 150, 1],
+  ["m2", "2 месяца", 60, 300, 2],
+  ["m3", "3 месяца", 90, 430, 3],
+];
 const BIND = process.env.BIND === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
 const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
 const DAY = 86400000;
@@ -164,8 +173,12 @@ const SCHEMA = [
   )`,
   `create index if not exists login_limits_bucket_idx on login_limits (bucket, created_at)`,
   `insert into plans (id, title, days, price_rub, traffic_gb, sort)
-   values ('m1', '30 дней', 30, 249, 0, 1), ('m3', '90 дней', 90, 599, 0, 2), ('m6', '180 дней', 180, 999, 0, 3)
+   values ('m1', '1 месяц', 30, 150, 0, 1), ('m2', '2 месяца', 60, 300, 0, 2), ('m3', '3 месяца', 90, 430, 0, 3)
    on conflict (id) do nothing`,
+  `create table if not exists shop_meta (
+    key text primary key,
+    value text not null
+  )`,
 ];
 
 function env(name) {
@@ -232,6 +245,60 @@ function subscriptionBase() {
   return panel ? `${panel}/sub` : "";
 }
 
+function cleanSubPath(value) {
+  const text = String(value || "").trim();
+  if (!text || text === "/") return "";
+  const withSlash = text.startsWith("/") ? text : `/${text}`;
+  return withSlash.replace(/\/+$/, "");
+}
+
+function panelSecretPath() {
+  try {
+    const part = new URL(env("XUI_BASE_URL")).pathname.split("/").filter(Boolean)[0] || "";
+    if (!part || part === "panel" || part === "sub" || part === "json") return "";
+    return `/${part}`;
+  } catch {
+    return "";
+  }
+}
+
+function chosenSubPath(setting) {
+  const configured = cleanSubPath(setting?.subPath);
+  const secret = panelSecretPath();
+  if (configured && configured !== "/sub") return configured;
+  if (secret) return secret;
+  return configured || "/sub";
+}
+
+function subscriptionLink(root, subId) {
+  const id = String(subId || "").trim();
+  if (!root || !id) return "";
+  return safeHttp(`${String(root).replace(/\/$/, "")}/${encodeURIComponent(id)}`);
+}
+
+async function subscriptionRoot() {
+  const cached = panelMemory.__lotSubRoot;
+  if (cached && cached.until > Date.now()) return cached.value;
+  const explicit = env("XUI_SUB_BASE_URL").replace(/\/$/, "");
+  const panelBase = env("XUI_BASE_URL").replace(/\/$/, "");
+  const path = chosenSubPath(null);
+  let value = "";
+  if (!value && path) {
+    let explicitUrl = null;
+    try { if (explicit) explicitUrl = new URL(explicit); } catch { explicitUrl = null; }
+    let panelUrl = null;
+    try { if (panelBase) panelUrl = new URL(panelBase); } catch { panelUrl = null; }
+    const host = explicitUrl?.hostname || panelUrl?.hostname || "";
+    const scheme = (explicitUrl?.protocol || panelUrl?.protocol || "https:").replace(":", "");
+    const port = Number(explicitUrl?.port) || 0;
+    const portBit = port && !((scheme === "https" && port === 443) || (scheme === "http" && port === 80)) ? `:${port}` : "";
+    if (host) value = `${scheme}://${host}${portBit}${path}`;
+  }
+  if (!value) value = explicit || (panelBase ? `${panelBase}/sub` : "");
+  panelMemory.__lotSubRoot = { until: Date.now() + (value ? 60_000 : 15_000), value };
+  return value;
+}
+
 async function sql(text, params = []) {
   if (databaseUrl !== "") {
     state.pool ??= new pg.Pool({ connectionString: databaseUrl, max: 5 });
@@ -280,6 +347,7 @@ async function localDb() {
 async function startLocal() {
   const db = new PGlite();
   for (const statement of SCHEMA) await db.exec(statement);
+  await ensureCatalog(async (text, params = []) => (await db.query(text, params)).rows);
   return db;
 }
 
@@ -289,9 +357,29 @@ async function applyPostgresSchema() {
   await client.connect();
   try {
     for (const statement of SCHEMA) await client.query(statement);
+    await ensureCatalog(async (text, params = []) => (await client.query(text, params)).rows);
   } finally {
     await client.end();
   }
+}
+
+async function ensureCatalog(query) {
+  const mark = await query("select value from shop_meta where key = 'catalog'");
+  if (mark[0]?.value === CATALOG_MARK) return;
+  for (const [id, title, days, price, sort] of CATALOG) {
+    await query(
+      `insert into plans (id, title, days, price_rub, traffic_gb, sort, active)
+       values ($1, $2, $3, $4, 0, $5, true)
+       on conflict (id) do update set title = excluded.title, days = excluded.days, price_rub = excluded.price_rub,
+         traffic_gb = 0, sort = excluded.sort, active = true`,
+      [id, title, days, price, sort],
+    );
+  }
+  await query("update plans set active = false where id not in ('m1', 'm2', 'm3')");
+  await query(
+    "insert into shop_meta (key, value) values ('catalog', $1) on conflict (key) do update set value = excluded.value",
+    [CATALOG_MARK],
+  );
 }
 
 function sha(value) {
@@ -562,16 +650,16 @@ async function panelCookie() {
   return value;
 }
 
-function present(client, email, inboundId, panelApi, shareLink) {
+function present(client, email, inboundId, panelApi, shareLink, subRoot) {
   const uuid = String(client.id || client.uuid || "");
   const subId = String(client.subId || "");
-  const base = subscriptionBase();
+  const base = subRoot || subscriptionBase();
   return {
     email,
     uuid,
     subId,
     expiresAtMs: Number(client.expiryTime) || 0,
-    subscriptionUrl: safeHttp(base && subId ? `${base}/${encodeURIComponent(subId)}` : ""),
+    subscriptionUrl: subscriptionLink(base, subId),
     shareLink: shareLink && isShareLink(shareLink) ? shareLink : "",
     inboundId,
     panelApi,
@@ -593,13 +681,13 @@ async function findClient(email) {
       const links = Array.isArray(obj.externalLinks) ? obj.externalLinks : [];
       const share = links.find((item) => item && item.kind === "link" && typeof item.value === "string" && isShareLink(item.value));
       const inbound = Array.isArray(obj.inboundIds) ? Number(obj.inboundIds[0]) : inboundIds()[0];
-      return present(client, email, Number.isInteger(inbound) ? inbound : null, "clients", share?.value);
+      return present(client, email, Number.isInteger(inbound) ? inbound : null, "clients", share?.value, await subscriptionRoot());
     } else if (modern.json?.success === false) return null;
   }
   const legacy = await legacyInbound();
   if (!legacy) return null;
   const client = legacy.clients.find((item) => item.email === email);
-  return client ? present(client, email, legacy.inboundId, "inbounds") : null;
+  return client ? present(client, email, legacy.inboundId, "inbounds", "", await subscriptionRoot()) : null;
 }
 
 function dropPanelCache() {
@@ -684,7 +772,8 @@ async function issueClient(input) {
     subId: input.subId,
     totalGB: input.totalBytes,
     expiryTime: input.expiryTime,
-    limitIp: 0,
+    limitIp: IP_LIMIT,
+    limitHwid: DEVICE_LIMIT,
     tgId: 0,
     enable: true,
     comment: input.comment,
@@ -719,6 +808,22 @@ async function issueClient(input) {
   return created;
 }
 
+function limitsReady(raw) {
+  return Number(raw?.limitIp) === IP_LIMIT && Number(raw?.limitHwid) === DEVICE_LIMIT;
+}
+
+async function applyLimits(client) {
+  if (!client || limitsReady(client.raw)) return client;
+  const seen = panelMemory.__lotLimitOnce ??= new Set();
+  if (seen.has(client.email)) return client;
+  seen.add(client.email);
+  try {
+    return await updateClient(client, { limitIp: IP_LIMIT, limitHwid: DEVICE_LIMIT });
+  } catch {
+    return client;
+  }
+}
+
 function editable(raw, overrides) {
   const body = {};
   for (const [key, value] of Object.entries(raw)) {
@@ -740,7 +845,7 @@ function panelClientBody(raw, overrides) {
     body.clientHostRuleIds = body.clientHostRuleIds.split(",").map((item) => Number(item.trim())).filter((item) => Number.isInteger(item));
   }
   if (typeof body.reverse === "string") delete body.reverse;
-  for (const key of ["tgId", "limitIp", "totalGB", "expiryTime", "reset"]) {
+  for (const key of ["tgId", "limitIp", "limitHwid", "totalGB", "expiryTime", "reset"]) {
     if (typeof body[key] === "string") body[key] = Number(body[key]) || 0;
   }
   if (typeof body.keepAlive === "string" && /^-?\d+$/.test(body.keepAlive.trim())) body.keepAlive = Number(body.keepAlive);
@@ -764,7 +869,7 @@ async function updateClient(current, overrides) {
     if (modern.status !== 404) {
       assertOk(modern, "Не удалось обновить ключ в панели");
       dropPanelCache();
-      return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, current.panelApi, current.shareLink);
+      return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, current.panelApi, current.shareLink, await subscriptionRoot());
     }
     panelMemory.__lotXuiLegacy = true;
   }
@@ -778,19 +883,22 @@ async function updateClient(current, overrides) {
   });
   assertOk(legacy, "Не удалось обновить ключ в панели");
   dropPanelCache();
-  return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, "inbounds", current.shareLink);
+  return (await findClient(next.email)) ?? present({ ...current.raw, ...next }, next.email, current.inboundId, "inbounds", current.shareLink, await subscriptionRoot());
 }
 
 async function extendClientTo(input) {
   const current = await findClient(input.email);
   if (!current) throw new Error("Ключ не найден в панели");
-  if (current.expiresAtMs + 5000 >= input.expiryTime && current.enable !== false) return current;
   const totalBytes = input.addGb <= 0 ? 0 : (Number(current.raw.totalGB) || 0) + input.addGb * 1024 * 1024 * 1024;
+  const sameTerm = current.expiresAtMs + 5000 >= input.expiryTime && current.enable !== false && limitsReady(current.raw);
+  if (sameTerm && input.addGb <= 0) return current;
   return updateClient(current, {
     email: input.email,
     expiryTime: input.expiryTime,
     totalGB: totalBytes,
     enable: true,
+    limitIp: IP_LIMIT,
+    limitHwid: DEVICE_LIMIT,
     comment: input.comment,
   });
 }
@@ -855,7 +963,7 @@ async function savePlan(input) {
   if (!PLAN_RE.test(id)) return { error: "Код тарифа: латинские буквы и цифры, до 32 знаков", status: 400 };
   if (title.length < 1 || title.length > 80) return { error: "Название от 1 до 80 символов", status: 400 };
   if (!Number.isInteger(days) || days < 1 || days > 3650) return { error: "Срок от 1 до 3650 дней", status: 400 };
-  if (!Number.isInteger(price) || price < 1 || price > 1_000_000) return { error: "Цена от 1 до 1 000 000 ₽", status: 400 };
+  if (!Number.isInteger(price) || price < 1 || price > PAYMENT_MAX_RUB) return { error: "Цена от 1 до 10 000 ₽. Один платёж не может быть больше этой суммы.", status: 400 };
   if (!Number.isInteger(traffic) || traffic < 0 || traffic > 100_000) return { error: "Трафик укажите числом гигабайт. 0 значит без лимита.", status: 400 };
   if (!Number.isInteger(sort) || sort < 0 || sort > 10_000) return { error: "Порядок от 0 до 10000", status: 400 };
   if (input.create) {
@@ -924,6 +1032,7 @@ async function syncKey(key, wantedName) {
         }
       }
     }
+    client = await applyLimits(client);
     const unlimited = !(Number(client.expiresAtMs) > 0);
     const enabled = client.enable !== false;
     const expiresAt = unlimited ? key.expires_at : new Date(client.expiresAtMs).toISOString();
@@ -955,6 +1064,9 @@ async function createOrder({ userId, planId, kind, keyId }) {
   const plans = await sql("select id, title, days, price_rub, traffic_gb from plans where id = $1 and active = true", [planId]);
   const plan = plans[0];
   if (!plan) return { error: "Такого тарифа нет", status: 400 };
+  if (!Number.isInteger(Number(plan.price_rub)) || Number(plan.price_rub) < 1 || Number(plan.price_rub) > PAYMENT_MAX_RUB) {
+    return { error: "Сумма одного платежа не может быть больше 10 000 ₽", status: 400 };
+  }
   let savedKey = null;
   if (kind === "renew") {
     if (!keyId || !ID_RE.test(keyId)) return { error: "Выберите ключ, который нужно продлить", status: 400 };
@@ -1007,6 +1119,11 @@ function plategaRedirect(value) {
 }
 
 async function startPlatega(order, user, origin) {
+  const email = normalizeEmail(user.email);
+  if (!email) return { error: "Для оплаты нужна почта покупателя", status: 400 };
+  if (!Number.isInteger(Number(order.amount_rub)) || Number(order.amount_rub) < 1 || Number(order.amount_rub) > PAYMENT_MAX_RUB) {
+    return { error: "Сумма одного платежа не может быть больше 10 000 ₽", status: 400 };
+  }
   const response = await fetch(plategaEndpoint(), {
     method: "POST",
     headers: {
@@ -1018,12 +1135,12 @@ async function startPlatega(order, user, origin) {
     body: JSON.stringify({
       paymentMethod: plategaMethod(),
       paymentDetails: { amount: order.amount_rub, currency: "RUB" },
-      description: `Ключ VPN, ${order.plan_title}`.slice(0, 180),
+      description: `Подписка LotVPN, ${order.plan_title}, ${order.plan_days} дней, до ${DEVICE_LIMIT} устройств`.slice(0, 180),
       return: `${origin}/pay/success?order=${order.id}`,
       failedUrl: `${origin}/pay/fail?order=${order.id}`,
       payload: order.id,
       orderId: order.id,
-      metadata: { user_email: user.email, userId: user.id },
+      metadata: { user_email: email, userId: user.id },
     }),
   });
   const data = await response.json().catch(() => null);
@@ -1383,6 +1500,8 @@ function orderJson(order, key) {
     kind: order.kind,
     amountRub: order.amount_rub,
     planTitle: order.plan_title,
+    planDays: order.plan_days,
+    deviceLimit: DEVICE_LIMIT,
     demo: order.demo,
     practice: !liveCheckout(),
     lastError: order.last_error,
@@ -1607,7 +1726,9 @@ async function handle(req, res) {
   if (req.method === "GET" && qr) {
     if (!user) return send(res, 401, "unauthorized", { "content-type": "text/plain" });
     const rows = await sql("select subscription_url from vpn_keys where id = $1 and user_id = $2", [qr[1], user.id]);
-    const link = safeHttp(rows[0]?.subscription_url || "");
+    const stored = rows[0]?.subscription_url || "";
+    const id = stored.split("?")[0].split("/").filter(Boolean).pop() || "";
+    const link = subscriptionLink(await subscriptionRoot().catch(() => ""), id) || safeHttp(stored);
     if (!link) return send(res, 404, "not found", { "content-type": "text/plain" });
     const png = await QRCode.toBuffer(link, { width: 280, margin: 1, color: { dark: "#14352c", light: "#fffaf1" } });
     send(res, 200, png, { "content-type": "image/png" });

@@ -3,95 +3,671 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Лот — ключи VPN</title>
+  <title>LotVPN</title>
   <link rel="icon" href="/favicon.svg">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&display=swap">
   <style>
-    :root { --bg:#f7f7f8; --ink:#1a1a1a; --muted:#666; --line:#e4e4e7; --card:#fff; --clay:#b42318; --ok:#067647; --ok-bg:#e8f6ee; }
-    * { box-sizing:border-box; }
-    [hidden] { display:none !important; }
-    body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:"Golos Text","Segoe UI",sans-serif; line-height:1.5; }
-    a { color:inherit; } button, input, textarea, select { font:inherit; color:inherit; }
-    h1,h2,h3 { margin:0; font-weight:650; letter-spacing:-.02em; }
-    h1 { font-size:34px; line-height:1.2; } h2 { font-size:18px; }
-    .wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
-    .topbar { background:#fff; border-bottom:1px solid var(--line); }
-    .topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; }
-    .logo { text-decoration:none; font-weight:700; font-size:18px; }
-    .nav { display:flex; align-items:center; gap:8px; }
-    .user { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:14px; }
-    .hero-band { background:#fff; border-bottom:1px solid var(--line); }
-    .hero-grid { display:grid; grid-template-columns:1.25fr .75fr; gap:36px; align-items:center; padding:64px 0; }
-    .hero h1 { font-size:48px; max-width:11em; } .lede { margin:12px 0 0; max-width:520px; color:var(--muted); font-size:17px; }
-    .hero-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
-    .facts { display:grid; gap:16px; } .fact strong { display:block; margin-bottom:2px; }
-    .section { padding:36px 0 12px; }
-    .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
-    .step-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
-    .step-no { margin:0 0 8px; color:var(--muted); font-size:13px; }
-    .site-footer { background:#161616; color:#c8c8c8; margin-top:48px; }
-    .site-footer .wrap { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:28px; padding:36px 0 42px; }
-    .site-footer h2 { color:#fff; font-size:16px; margin:0 0 8px; }
-    .site-footer a { color:#fff; }
-    .orders { display:grid; gap:8px; }
-    .order-line { display:flex; justify-content:space-between; gap:16px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
-    .tariffs, .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-    .tariff, .card, .key, .plan, .admin-row { background:var(--card); border:1px solid var(--line); border-radius:8px; }
-    .tariff { padding:20px; display:flex; flex-direction:column; gap:8px; }
-    .tariff.popular { border-color:#111; }
-    .badge { align-self:flex-start; border:1px solid var(--line); border-radius:999px; padding:2px 8px; font-size:12px; color:var(--muted); }
-    .price { font-size:30px; font-weight:700; margin:4px 0; }
-    .muted { color:var(--muted); } .kicker { margin:0 0 6px; color:var(--muted); font-size:13px; }
-    .features { margin:0; padding:0; list-style:none; color:var(--muted); font-size:14px; display:grid; gap:4px; }
-    .btn, .ghost, .lime { border-radius:6px; padding:10px 14px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
-    .btn, .lime { background:#111; color:#fff; border:1px solid #111; }
-    .ghost { background:#fff; color:#111; border:1px solid #d4d4d8; } .full { width:100%; margin-top:auto; }
-    .notice { padding:12px 14px; background:#fff; border:1px solid #ead7a3; border-radius:8px; color:#6b4e12; }
-    .error { color:var(--clay); margin:0; min-height:1.2em; }
-    .stack { display:grid; gap:12px; } label { display:grid; gap:6px; font-size:13px; color:var(--muted); }
-    input, textarea { width:100%; border:1px solid var(--line); background:#fff; border-radius:6px; padding:10px 12px; }
-    textarea { min-height:72px; font-family:ui-monospace,monospace; font-size:13px; }
-    .keys { display:grid; gap:12px; } .key, .card { padding:18px; }
-    .key-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-    .pill { border-radius:999px; padding:3px 8px; font-size:12px; background:var(--ok-bg); color:var(--ok); }
-    .pill.warn { background:#fdecea; color:var(--clay); }
-    .row { display:flex; flex-wrap:wrap; gap:8px; } .qr { width:140px; height:140px; border-radius:6px; background:#fff; border:1px solid var(--line); }
-    .plan { text-align:left; padding:14px; cursor:pointer; } .plan strong { display:block; font-size:20px; margin-top:4px; color:#111; }
-    .admin-list { display:grid; gap:12px; } .admin-row { padding:16px; display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; align-items:end; }
-    .admin-row .error { grid-column:1 / -1; }
-    .check { display:flex; align-items:center; gap:6px; white-space:nowrap; } .check input { width:auto; }
-    button:focus-visible, a:focus-visible, input:focus { outline:2px solid #111; outline-offset:2px; }
-    @media (max-width:900px) { .tariffs, .plans, .admin-row, .hero-grid, .steps, .site-footer .wrap { grid-template-columns:1fr; } .hero h1, h1 { font-size:32px; } .user { display:none; } .order-line { align-items:flex-start; flex-direction:column; } }
+    :root {
+      --bg: #f6f7fb;
+      --bg-soft: #eef0f7;
+      --ink: #0f172a;
+      --ink-2: #334155;
+      --muted: #64748b;
+      --line: #e5e7eb;
+      --line-strong: #cbd5e1;
+      --card: #ffffff;
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --primary-soft: #eef2ff;
+      --clay: #dc2626;
+      --clay-bg: #fef2f2;
+      --ok: #059669;
+      --ok-bg: #ecfdf5;
+      --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      --radius: 12px;
+      --radius-lg: 18px;
+      --shadow-xs: 0 1px 2px rgba(15,23,42,.04);
+      --shadow-sm: 0 2px 8px rgba(15,23,42,.05);
+      --shadow-md: 0 10px 24px -8px rgba(15,23,42,.12);
+      --shadow-lg: 0 24px 48px -16px rgba(99,102,241,.28);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 900px 500px at 50% -10%, rgba(99,102,241,.08), transparent 70%),
+        var(--bg);
+      font-family: "Golos Text", "Segoe UI", system-ui, sans-serif;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+    h1 { font-size: 34px; line-height: 1.2; }
+    h2 { font-size: 20px; }
+
+    .wrap { width: min(1080px, calc(100% - 32px)); margin: 0 auto; }
+    .section { padding: 44px 0 12px; }
+
+    /* ---------- Header ---------- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,.82);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas: "brand actions" "docs docs";
+      align-items: center;
+      column-gap: 16px;
+      row-gap: 2px;
+      min-height: 64px;
+      padding: 12px 0 10px;
+    }
+    .logo {
+      grid-area: brand;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.03em;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .doc-links { grid-area: docs; display: flex; align-items: center; gap: 20px; }
+    .doc-links a {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color .15s ease;
+      white-space: nowrap;
+    }
+    .doc-links a:hover { color: var(--primary); }
+
+    .nav {
+      grid-area: actions;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .user {
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 0 4px;
+    }
+
+    /* ---------- Hero ---------- */
+    .hero-band {
+      position: relative;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfbff 100%);
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .hero-band::before {
+      content: "";
+      position: absolute;
+      top: -320px;
+      right: -160px;
+      width: 720px;
+      height: 720px;
+      background: radial-gradient(circle, rgba(139,92,246,.14), transparent 65%);
+      pointer-events: none;
+    }
+    .hero-band::after {
+      content: "";
+      position: absolute;
+      bottom: -260px;
+      left: -160px;
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(circle, rgba(6,182,212,.10), transparent 65%);
+      pointer-events: none;
+    }
+    .hero-intro { position: relative; padding: 56px 0 64px; }
+    .hero-intro h1 {
+      font-size: 38px;
+      letter-spacing: -0.03em;
+      background: linear-gradient(120deg, #0f172a 0%, #4f46e5 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-intro .lede {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .lede {
+      margin: 12px 0 0;
+      max-width: 520px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 20px; }
+    .know { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+    .hero-intro .know { grid-template-columns: repeat(4, 1fr); }
+
+    .step-card {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow-xs);
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .step-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(99,102,241,.25);
+    }
+    .step-card h3 {
+      font-size: 15px;
+      line-height: 1.4;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .step-card p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
+
+    .step-no {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .hero-intro .steps { gap: 12px; margin-top: 16px; }
+    .hero-intro .know { gap: 12px; margin-top: 12px; }
+    .hero-intro .step-card { padding: 16px; }
+    .hero-intro .step-card h3 { font-size: 14px; line-height: 1.35; }
+    .hero-intro .step-card p { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
+
+    .ready {
+      margin: 22px 0 0;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, rgba(99,102,241,.07), rgba(6,182,212,.07));
+      border: 1px solid rgba(99,102,241,.15);
+      border-radius: var(--radius);
+      font-weight: 500;
+      color: var(--ink-2);
+      font-size: 14px;
+    }
+    .ready a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(99,102,241,.3);
+      transition: border-color .15s ease;
+    }
+    .ready a:hover { border-bottom-color: var(--primary); }
+
+    .hero-intro h2 { margin-top: 40px; font-size: 22px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+
+    /* ---------- Buttons ---------- */
+    .btn, .ghost, .lime {
+      border-radius: 10px;
+      padding: 11px 18px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 15px;
+      transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+      border: none;
+      white-space: nowrap;
+    }
+    .btn, .lime {
+      background: var(--gradient);
+      background-size: 160% 160%;
+      background-position: 0% 0%;
+      color: #fff;
+      box-shadow: 0 4px 14px -4px rgba(99,102,241,.5);
+    }
+    .btn:hover, .lime:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px -8px rgba(99,102,241,.6);
+      background-position: 100% 0%;
+    }
+    .btn:active, .lime:active { transform: translateY(0); }
+    .ghost {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line-strong);
+    }
+    .ghost:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-soft);
+      transform: translateY(-1px);
+    }
+    .full { width: 100%; margin-top: auto; }
+
+    /* ---------- Forms ---------- */
+    .stack { display: grid; gap: 14px; }
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 15px;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(99,102,241,.15);
+    }
+    textarea {
+      min-height: 80px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      resize: vertical;
+    }
+    button:focus-visible, a:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 3px;
+      border-radius: 8px;
+    }
+
+    /* ---------- Notices ---------- */
+    .notice {
+      padding: 14px 18px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: var(--radius);
+      color: #92400e;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .error { color: var(--clay); margin: 0; min-height: 1.2em; font-size: 14px; }
+    .muted { color: var(--muted); }
+    .kicker {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--primary);
+    }
+
+    /* ---------- Cards ---------- */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-xs);
+    }
+    .card.stack { gap: 16px; }
+
+    /* ---------- Tariffs ---------- */
+    .tariffs, .plans {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .tariff {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: var(--shadow-xs);
+      transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    }
+    .tariff:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--line-strong);
+    }
+    .tariff h3 { font-size: 16px; }
+    .tariff.popular {
+      border: 2px solid transparent;
+      background:
+        linear-gradient(#fff, #fff) padding-box,
+        var(--gradient) border-box;
+      box-shadow: var(--shadow-lg);
+    }
+    .tariff.popular:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 32px 56px -16px rgba(99,102,241,.35);
+    }
+    .badge {
+      align-self: flex-start;
+      border: none;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--gradient);
+      letter-spacing: .01em;
+    }
+    .price {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin: 4px 0;
+      line-height: 1.05;
+      background: linear-gradient(135deg, #0f172a 20%, #4f46e5 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .features {
+      margin: 6px 0 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      font-size: 14px;
+      display: grid;
+      gap: 8px;
+      flex: 1;
+    }
+    .features li { position: relative; padding-left: 22px; }
+    .features li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 6px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--primary-soft);
+      box-shadow: inset 0 0 0 2px var(--primary);
+    }
+
+    /* ---------- Orders / keys ---------- */
+    .orders { display: grid; gap: 10px; margin-top: 12px; }
+    .order-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-xs);
+    }
+    .order-line strong { font-weight: 700; }
+    .order-line .muted { font-size: 14px; margin-top: 4px; }
+
+    .keys { display: grid; gap: 14px; margin-top: 14px; }
+    .key {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      box-shadow: var(--shadow-xs);
+      transition: box-shadow .2s ease, border-color .2s ease;
+    }
+    .key:hover { box-shadow: var(--shadow-sm); border-color: var(--line-strong); }
+    .key-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .key-head h3 { font-size: 17px; }
+    .pill {
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--ok-bg);
+      color: var(--ok);
+      white-space: nowrap;
+    }
+    .pill.warn { background: var(--clay-bg); color: var(--clay); }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .qr {
+      width: 150px;
+      height: 150px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 6px;
+      margin-top: 16px;
+    }
+
+    /* ---------- Plans (cabinet) ---------- */
+    .plan {
+      text-align: left;
+      padding: 18px;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font: inherit;
+    }
+    .plan:hover {
+      border-color: var(--primary);
+      box-shadow: 0 12px 24px -12px rgba(99,102,241,.35);
+      transform: translateY(-2px);
+    }
+    .plan strong {
+      display: block;
+      font-size: 22px;
+      margin-top: 4px;
+      color: var(--primary);
+    }
+    .plan small { color: var(--muted); font-size: 13px; }
+
+    /* ---------- Admin ---------- */
+    .admin-list { display: grid; gap: 14px; margin-top: 14px; }
+    .admin-row {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      align-items: end;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-xs);
+    }
+    .admin-row .error { grid-column: 1 / -1; }
+    .check { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .check input { width: auto; accent-color: var(--primary); }
+
+    /* ---------- Docs ---------- */
+    .doc {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      box-shadow: var(--shadow-xs);
+      margin-top: 18px;
+    }
+    .doc h2 { margin: 28px 0 10px; font-size: 19px; }
+    .doc h2:first-child { margin-top: 0; }
+    .doc p, .doc li {
+      margin: 0 0 10px;
+      color: var(--ink-2);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+    .doc ol, .doc ul { margin: 0 0 12px; padding-left: 22px; }
+    .doc a {
+      color: var(--primary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-thickness: 1px;
+    }
+    .doc a:hover { text-decoration-thickness: 2px; }
+    .doc code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9em;
+      background: var(--bg-soft);
+      padding: 2px 6px;
+      border-radius: 5px;
+      color: var(--primary);
+    }
+
+    /* ---------- Footer ---------- */
+    .site-footer {
+      background: #0b1120;
+      color: #94a3b8;
+      margin-top: 72px;
+      position: relative;
+      overflow: hidden;
+    }
+    .site-footer::before {
+      content: "";
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(99,102,241,.25), transparent 70%);
+      pointer-events: none;
+    }
+    .site-footer .wrap {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr;
+      gap: 32px;
+      padding: 56px 0 48px;
+    }
+    .site-footer h2 {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+    .site-footer p { margin: 0 0 8px; font-size: 14px; line-height: 1.55; }
+    .site-footer a {
+      color: #cbd5e1;
+      text-decoration: none;
+      transition: color .15s ease;
+    }
+    .site-footer a:hover { color: #fff; }
+    .approv {
+      grid-column: 1 / -1;
+      margin: 24px 0 0;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 960px) {
+      .tariffs, .plans, .admin-row, .steps,
+      .site-footer .wrap {
+        grid-template-columns: 1fr;
+      }
+      .hero-intro .know { grid-template-columns: repeat(2, 1fr); }
+      .hero-intro h1 { font-size: 30px; }
+      .price { font-size: 32px; }
+      .user { display: none; }
+      .order-line { flex-direction: column; align-items: flex-start; }
+      .topbar-inner {
+        grid-template-columns: 1fr;
+        grid-template-areas: "brand" "actions" "docs";
+        row-gap: 10px;
+        padding: 14px 0;
+      }
+      .nav { justify-content: flex-start; }
+      .doc-links { flex-direction: row; flex-wrap: wrap; gap: 12px; }
+    }
+    @media (max-width: 600px) {
+      .hero-intro .know { grid-template-columns: 1fr; }
+      .hero-intro { padding: 40px 0 44px; }
+      .hero-intro h1 { font-size: 26px; }
+      .doc { padding: 20px; }
+      .card, .tariff { padding: 20px; }
+      .site-footer .wrap { gap: 24px; padding: 40px 0 36px; }
+    }
   </style>
 </head>
 <body>
-  <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">Лот</a><nav class="nav" id="nav"></nav></div></header>
+  <header class="topbar"><div class="wrap topbar-inner"><a class="logo" href="/">LotVPN</a><nav class="doc-links" aria-label="Документы"><a href="/privacy">Политика конфиденциальности</a><a href="/terms">Пользовательское соглашение</a></nav><nav class="nav" id="nav"></nav></div></header>
   <main id="view"></main>
   <footer class="site-footer"><div class="wrap">
-    <div><h2>Лот</h2><p>Ключи VPN для телефона и компьютера. Срок выбираете на сайте, оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
-    <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p></div>
-    <div><h2>Если деньги списались</h2><p>Ключ создаётся после уведомления Platega. Откройте кабинет с той же почты: счёт будет виден там, пока ключ не выдан.</p></div>
+    <div><h2>LotVPN</h2><p>Подписка на ключ для телефона и компьютера. На сайте указаны срок, цена и лимит в 4 устройства. Оплата проходит через Platega, ключ остаётся в кабинете.</p></div>
+    <div><h2>Документы</h2><p><a href="/privacy">Политика конфиденциальности</a></p><p><a href="/terms">Пользовательское соглашение</a></p><p><a href="/setup">Как подключить Happ и Incy</a></p><p><a href="/#tariffs">Цены и тарифы</a></p></div>
+    <div><h2>Поддержка</h2><p>Telegram: <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a></p><p>Это личный аккаунт поддержки, не группа.</p></div>
+    <div><h2>Кабинет</h2><p><a href="/login">Войти по почте</a></p><p><a href="/cabinet">Мои ключи</a></p><p>Если деньги списались, откройте кабинет с той же почты.</p></div>
+    <p class="approv">approv</p>
   </div></footer>
 
   <template id="tpl-home">
-    <section class="hero-band"><div class="wrap hero-grid"><div class="hero">
-      <p class="kicker">VPN</p><h1>Ключ после оплаты</h1>
-      <p class="lede">Выберите срок, введите почту и оплатите через Platega. Пароль и код не нужны. Новый ключ или продление старого появляется в кабинете.</p>
-      <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок</a><a class="ghost" id="cabinet-link" href="/login">Открыть кабинет</a></div>
-    </div><aside class="card facts">
-      <div class="fact"><strong>Вход по почте</strong><span class="muted">Кабинет открывается сразу, письмо с кодом не отправляется.</span></div>
-      <div class="fact"><strong>Оплата на сайте</strong><span class="muted">Сумму считает сервер и передаёт её в Platega.</span></div>
-      <div class="fact"><strong>Один ключ можно продлить</strong><span class="muted">Дни прибавляются к оставшемуся сроку, а не создают второй ключ.</span></div>
-    </aside></div></section>
-    <div class="wrap">
+    <section class="hero-band"><div class="wrap hero-intro">
+      <h1>Как получить VPN?</h1>
+      <p class="lede">Всего 3 простых шага:</p>
+      <div class="steps">
+        <article class="step-card"><h3><span class="step-no">1.</span>Выберите срок подписки</h3><p class="muted">Выберите, на какой срок хотите подключить VPN.</p></article>
+        <article class="step-card"><h3><span class="step-no">2.</span>Укажите свою электронную почту</h3><p class="muted">Введите действующий адрес почты. На него будет привязан ваш личный кабинет и VPN-подписка.</p></article>
+        <article class="step-card"><h3><span class="step-no">3.</span>Оплатите подписку</h3><p class="muted">Нажмите кнопку оплаты и завершите платёж через Platega.</p></article>
+      </div>
+      <p class="ready">Готово! После оплаты ваш VPN-ключ появится в личном кабинете. Как добавить его в приложение — в <a href="/setup">инструкции для Happ и Incy</a>.</p>
+      <div class="hero-actions"><a class="btn" href="#tariffs">Выбрать срок подписки</a><a class="ghost" id="cabinet-link" href="/login">Открыть личный кабинет</a></div>
       <p class="notice" id="notice" hidden></p>
-      <section class="section" id="tariffs"><h2>Тарифы</h2><p class="muted">Цена на этой странице — та, которую спишет Platega.</p><div class="tariffs" id="tariff-list"></div></section>
-      <section class="section"><h2>Как получить ключ</h2><div class="steps">
-        <article class="step-card"><p class="step-no">01</p><h3>Почта</h3><p class="muted">Введите адрес. Отдельного подтверждения нет.</p></article>
-        <article class="step-card"><p class="step-no">02</p><h3>Оплата</h3><p class="muted">Platega проводит платёж и сообщает об этом сайту.</p></article>
-        <article class="step-card"><p class="step-no">03</p><h3>Кабинет</h3><p class="muted">Ссылка подписки и QR появляются у этой почты.</p></article>
-      </div></section>
-    </div>
+      <section id="tariffs"><h2>Цены и тарифы</h2><p class="muted">Выберите подходящий период. Один платёж не больше 10 000 ₽.</p><div class="tariffs" id="tariff-list"></div></section>
+      <h2>Что важно знать?</h2>
+      <div class="know">
+        <article class="step-card"><h3>До 4 устройств</h3><p class="muted">Одну подписку можно использовать одновременно на 4 устройствах.</p></article>
+        <article class="step-card"><h3>Новый ключ или продление</h3><p class="muted">После оплаты вы получите новый VPN-ключ. Если у вас уже есть подписка, можно продлить её — новые дни добавятся к оставшемуся сроку.</p></article>
+        <article class="step-card"><h3>Вход в личный кабинет</h3><p class="muted">Просто введите свою электронную почту. Пароль и код подтверждения не нужны — кабинет откроется сразу.</p></article>
+        <article class="step-card"><h3>Без сложной оплаты</h3><p class="muted">Стоимость подписки рассчитывается автоматически. Вам останется только перейти к оплате через Platega.</p></article>
+      </div>
+    </div></section>
   </template>
 
   <template id="tpl-login">
@@ -108,6 +684,7 @@
       <div class="stack">
         <div id="pending-block" hidden><h2>Ожидают ключ</h2><div class="orders" id="pending"></div></div>
         <h2>Ваши ключи</h2>
+        <p class="muted">Ссылку из кабинета добавляют в приложение. <a href="/setup">Инструкция для Happ и Incy</a>.</p>
         <p class="muted" id="empty">Пока пусто. Ниже можно купить первый ключ.</p>
         <div class="keys" id="keys"></div>
         <section class="card stack" id="buy"><h2 id="intent-title" style="margin:0">Новый ключ</h2><p id="intent-hint" class="muted" style="margin:0">Появится отдельный ключ. Старые останутся в списке.</p>
@@ -121,7 +698,9 @@
   <template id="tpl-pay">
     <div class="wrap section"><div class="card stack" style="max-width:440px">
       <p class="kicker" id="inv"></p><h1 id="title"></h1><p class="price" id="price"></p>
+      <p id="offer"></p>
       <p class="muted" id="hint"></p>
+      <p class="muted">Оплачивая, вы принимаете <a href="/terms">пользовательское соглашение</a> и <a href="/privacy">политику конфиденциальности</a>. Поддержка: <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</p>
       <p class="notice" id="demo-note" hidden></p>
       <button id="pay" class="btn full" type="button"></button><p id="err" class="error"></p>
     </div></div>
@@ -149,6 +728,161 @@
 
   <template id="tpl-denied">
     <div class="wrap section"><div class="card"><h1>Нет доступа</h1><p class="muted">Эта почта не указана в ADMIN_EMAIL. Добавьте её в .env и перезапустите сайт.</p></div></div>
+  </template>
+
+  <template id="tpl-setup">
+    <div class="wrap section"><p class="kicker">LotVPN</p><h1>Как добавить подключение</h1>
+      <p class="muted">После оплаты в кабинете есть ссылка подписки и QR. Одна и та же ссылка подходит для Happ и Incy. На одну подписку можно подключить до 4 устройств.</p>
+      <article class="doc">
+        <h2>Что копировать</h2>
+        <ol>
+          <li>Откройте кабинет с той почты, которой оплачивали.</li>
+          <li>Нажмите «Скопировать подписку». В буфер должна попасть вся строка, от <code>https://</code> до конца. Не переписывайте её вручную.</li>
+          <li>QR рядом с ключом — та же ссылка. Он нужен, когда ключ открыт на компьютере, а приложение стоит на телефоне.</li>
+        </ol>
+        <h2>Happ</h2>
+        <p>Сначала установите приложение для своего устройства:</p>
+        <ul>
+          <li><a href="https://apps.apple.com/us/app/happ-proxy-utility/id6504287215" target="_blank" rel="noopener noreferrer">iPhone и iPad</a></li>
+          <li><a href="https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk" target="_blank" rel="noopener noreferrer">Android</a></li>
+          <li><a href="https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe" target="_blank" rel="noopener noreferrer">Windows</a></li>
+          <li><a href="https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.macOS.universal.dmg" target="_blank" rel="noopener noreferrer">Mac</a></li>
+        </ul>
+        <ol>
+          <li>Скопируйте ссылку в кабинете. На телефоне можно нажать «Добавить в Happ»: приложение откроется и заберёт эту ссылку само. Если вместо Happ открылся браузер, приложения на этом устройстве нет.</li>
+          <li>Если кнопки нет или она не сработала, откройте Happ и нажмите «+» в правом верхнем углу.</li>
+          <li>Выберите «Из буфера обмена». В других версиях пункт называется «Вставить», «Импорт из буфера» или «Добавить из буфера».</li>
+          <li>На iPhone система спросит разрешение на вставку. Нажмите «Разрешить», иначе Happ получит пустую строку.</li>
+          <li>Другой способ: «+» → сканирование QR и камера на код из кабинета.</li>
+          <li>В списке появится подписка. Выберите сервер и включите подключение.</li>
+        </ol>
+        <h2>Incy</h2>
+        <p>Приложение ставится на iPhone, Android и компьютер. Ссылка от LotVPN та же, что для Happ.</p>
+        <ol>
+          <li>Скопируйте ссылку подписки в кабинете.</li>
+          <li>Откройте Incy, нажмите «+», затем «Добавить подписку» и вставьте ссылку. В части версий этот пункт называется «Импорт из буфера обмена».</li>
+          <li>Либо нажмите «+» и отсканируйте QR из кабинета.</li>
+          <li>Дождитесь списка серверов, выберите сервер и включите подключение.</li>
+        </ol>
+        <h2>Если подписка не добавилась</h2>
+        <ol>
+          <li>Скопируйте ссылку ещё раз на том же устройстве, где стоит приложение, и проверьте, что она начинается с <code>https://</code>.</li>
+          <li>На iPhone заново разрешите вставку из буфера.</li>
+          <li>Та же ссылка второй раз не добавляется. Обновите уже существующую подписку в приложении, а не создавайте копию.</li>
+          <li>Если список серверов пустой, напишите в поддержку: Telegram <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</li>
+        </ol>
+      </article>
+    </div>
+  </template>
+
+  <template id="tpl-privacy">
+    <div class="wrap section"><p class="kicker">LotVPN</p><h1>Политика конфиденциальности</h1>
+      <p class="muted">Редакция от 17 ноября 2026 года</p>
+      <article class="doc">
+        <p>Политика конфиденциальности регулирует сбор, использование и защиту информации пользователей сервиса LotVPN. Собираются почта, технические данные и история заказов. Данные используются для работы сервиса, оплаты и поддержки. Передача третьим лицам возможна для проведения платежа, по закону или с согласия пользователя. Пользователь сам несёт риск передачи данных через интернет. Продолжение использования сервиса после изменения Политики означает согласие с новой редакцией.</p>
+        <h2>1. Общие положения</h2>
+        <ol>
+          <li>Настоящая Политика конфиденциальности (далее — «Политика») регулирует порядок обработки и защиты информации, которую Пользователь передаёт при использовании сервиса LotVPN (далее — «Сервис»).</li>
+          <li>Используя Сервис, Пользователь подтверждает своё согласие с условиями Политики. Если Пользователь не согласен с условиями, он обязан прекратить использование Сервиса.</li>
+        </ol>
+        <h2>2. Сбор информации</h2>
+        <ol>
+          <li>Сервис может собирать адрес электронной почты, по которому открывается кабинет; технические данные (IP-адрес, сведения о браузере, устройстве и операционной системе); историю заказов и обращений в поддержку.</li>
+          <li>Сервис не требует паспортных данных, фотографий документов и иной информации сверх почты, нужной для входа, оплаты и выдачи подписки.</li>
+        </ol>
+        <h2>3. Использование информации</h2>
+        <ol>
+          <li>Информация используется для работы кабинета, выдачи и продления подписки, связи с Пользователем, поддержки и проведения платежа. Почта, указанная при входе, передаётся платёжному провайдеру как идентификатор покупателя и повторяется в каждом его платеже.</li>
+        </ol>
+        <h2>4. Передача информации третьим лицам</h2>
+        <ol>
+          <li>Администрация не передаёт полученные данные третьим лицам, за исключением случаев, когда это требуется по закону, необходимо для исполнения заказа (платёжный провайдер получает почту покупателя, сумму и описание тарифа) или Пользователь сам дал согласие.</li>
+        </ol>
+        <h2>5. Хранение и защита данных</h2>
+        <ol>
+          <li>Данные хранятся в течение срока, необходимого для работы Сервиса и исполнения оплаченных заказов.</li>
+          <li>Администрация принимает разумные меры для защиты данных, но не гарантирует абсолютную безопасность информации при передаче через интернет.</li>
+        </ol>
+        <h2>6. Отказ от ответственности</h2>
+        <ol>
+          <li>Пользователь понимает и соглашается, что передача информации через интернет всегда сопряжена с рисками.</li>
+          <li>Администрация не несёт ответственности за утрату, кражу или раскрытие данных, если это произошло по вине третьих лиц или самого Пользователя.</li>
+        </ol>
+        <h2>7. Изменения в Политике</h2>
+        <ol>
+          <li>Администрация вправе изменять условия Политики без предварительного уведомления.</li>
+          <li>Актуальная редакция публикуется на этой странице. Продолжение использования Сервиса после изменений означает согласие Пользователя с новой редакцией.</li>
+        </ol>
+        <h2>8. Контакты</h2>
+        <p>Поддержка Сервиса: Telegram <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</p>
+      </article>
+    </div>
+  </template>
+
+  <template id="tpl-terms">
+    <div class="wrap section"><p class="kicker">LotVPN</p><h1>Пользовательское соглашение</h1>
+      <p class="muted">Редакция от 18 ноября 2026 года</p>
+      <article class="doc">
+        <h2>1. Общие положения</h2>
+        <ol>
+          <li>Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует использование онлайн-сервиса LotVPN (далее — «Сервис»), предоставляемого Администрацией.</li>
+          <li>Вход по почте, оформление заказа или оплата означают, что Пользователь ознакомился с Соглашением и принимает его в полном объёме.</li>
+          <li>В случае несогласия с условиями Пользователь обязан прекратить использование Сервиса.</li>
+        </ol>
+        <h2>2. Характер услуг</h2>
+        <ol>
+          <li>Сервис предоставляет цифровой доступ: ключ подписки LotVPN на выбранный и оплаченный срок.</li>
+          <li>До оплаты на сайте указаны цена, срок и состав тарифа. На дату этой редакции тарифы такие: 150 ₽ за 1 месяц (30 дней), 300 ₽ за 2 месяца (60 дней), 430 ₽ за 3 месяца (90 дней).</li>
+          <li>Одна подписка рассчитана на одновременное использование не более чем на 4 устройствах. Отдельная квота трафика в рамках оплаченного срока не устанавливается.</li>
+          <li>Ключ появляется в кабинете по той почте, с которой оформлен заказ. Продление прибавляет оплаченные дни к оставшемуся сроку той же подписки.</li>
+          <li>Пользователь понимает, что услуга нематериальная: её ценность в доступе на оплаченный срок, а не в передаче вещи.</li>
+        </ol>
+        <h2>3. Отказ от гарантий и ответственности</h2>
+        <ol>
+          <li>Сервис предоставляется на условиях «как есть».</li>
+          <li>Администрация не гарантирует соответствие Сервиса ожиданиям Пользователя и бесперебойную работу.</li>
+          <li>Администрация не несёт ответственности за прямые и косвенные убытки, действия третьих лиц и временные технические сбои.</li>
+          <li>Решения об использовании доступа Пользователь принимает самостоятельно и на свой риск.</li>
+        </ol>
+        <h2>4. Законность использования</h2>
+        <ol>
+          <li>Сервис не предназначен для противоправной деятельности.</li>
+          <li>Пользователь обязуется использовать Сервис в рамках применимого законодательства и правил третьих сторон.</li>
+          <li>Ответственность за законность использования доступа полностью возлагается на Пользователя.</li>
+        </ol>
+        <h2>5. Интеллектуальная собственность</h2>
+        <ol>
+          <li>Материалы Сервиса охраняются законодательством об интеллектуальной собственности.</li>
+          <li>Пользователю запрещается копировать, распространять и перепродавать материалы Сервиса без разрешения правообладателя. Выданный ключ предназначен для личного использования на не более чем 4 устройствах.</li>
+        </ol>
+        <h2>6. Ограничение доступа</h2>
+        <ol>
+          <li>Администрация вправе ограничить доступ при нарушении Соглашения, злоупотреблениях или по требованию закона либо платёжного провайдера.</li>
+          <li>Ограничение доступа не отменяет обязательства, возникшие раньше.</li>
+        </ol>
+        <h2>7. Платежи и возвраты</h2>
+        <ol>
+          <li>Оплата производится по цене и описанию тарифа, которые показаны на сайте до платежа. Один платёж не превышает 10 000 ₽. В платёж передаётся почта покупателя.</li>
+          <li>После фактической выдачи ключа возврат не производится: цифровая услуга считается оказанной.</li>
+          <li>Возврат возможен, если услуга не оказана по технической вине Сервиса и доступ фактически не предоставлен.</li>
+          <li>Для рассмотрения возврата Пользователь обращается в поддержку в течение 24 часов с момента оплаты.</li>
+          <li>Решение о возврате принимает Администрация.</li>
+          <li>Пользователь обязуется не инициировать возврат платежа через платёжную систему, не обратившись сначала в поддержку Сервиса.</li>
+        </ol>
+        <h2>8. Конфиденциальность</h2>
+        <ol>
+          <li>Порядок обработки данных описан в <a href="/privacy">политике конфиденциальности</a>.</li>
+        </ol>
+        <h2>9. Изменение условий</h2>
+        <ol>
+          <li>Администрация вправе изменять Соглашение. Актуальная версия публикуется на этой странице.</li>
+          <li>Продолжение использования Сервиса означает согласие с обновлёнными условиями.</li>
+        </ol>
+        <h2>10. Контактная информация</h2>
+        <p>По вопросам оплаты, доступа и возврата: Telegram <a href="https://t.me/serkazvp" rel="noopener noreferrer">@serkazvp</a>.</p>
+        <p>Используя Сервис, Пользователь подтверждает, что ознакомился с Соглашением и принимает его условия.</p>
+      </article>
+    </div>
   </template>
 
   <template id="tpl-missing">
@@ -254,7 +988,12 @@
       if (total >= 3 && index === 1) article.append(el("span", "badge", "Обычно берут"));
       article.append(el("h3", "", plan.title), el("p", "price", rub(plan.priceRub)));
       const list = el("ul", "features");
-      list.append(el("li", "", `${plan.days} дней`), el("li", "", plan.trafficGb > 0 ? `${plan.trafficGb} ГБ` : "Трафик без лимита"), el("li", "", "Продление того же ключа"));
+      list.append(
+        el("li", "", `${rub(plan.priceRub)} за ${plan.days} дней`),
+        el("li", "", "До 4 устройств"),
+        el("li", "", plan.trafficGb > 0 ? `${plan.trafficGb} ГБ` : "Трафик без лимита"),
+        el("li", "", "Продление того же ключа"),
+      );
       const link = Object.assign(el("a", "btn full", "Купить"), { href });
       article.append(list, link);
       return article;
@@ -294,7 +1033,7 @@
     function planButton(plan, intent, err) {
       const button = el("button", "plan");
       button.type = "button";
-      button.append(el("span", "", plan.title), el("strong", "", rub(plan.priceRub)), el("small", "", "Перейти к оплате"));
+      button.append(el("span", "", plan.title), el("strong", "", rub(plan.priceRub)), el("small", "", `${plan.days} дней, до 4 устройств`));
       button.onclick = async () => {
         err.textContent = "";
         button.disabled = true;
@@ -336,13 +1075,15 @@
           const card = el("article", "key");
           const head = el("div", "key-head");
           head.append(el("h3", "", key.label), el("span", pill[0], pill[1]));
-          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)));
+          card.append(head, el("p", key.active && key.status !== "stale" ? "muted" : "error", accessText(key)), el("p", "muted", "До 4 устройств на эту подписку."));
           if (key.demo) card.append(el("p", "notice", "Образец. Панель 3x-ui не подключена, эта ссылка никуда не ведёт."));
           const row = el("div", "row");
           const copy = el("button", "ghost", "Скопировать подписку");
           copy.type = "button";
           copy.onclick = () => copyText(key.subscriptionUrl, copy);
           row.append(copy);
+          if (/^https?:\/\//.test(key.subscriptionUrl || "")) row.append(Object.assign(el("a", "ghost", "Добавить в Happ"), { href: `happ://add/${key.subscriptionUrl}` }));
+          row.append(Object.assign(el("a", "ghost", "Инструкция"), { href: "/setup" }));
           if (key.shareLink) {
             const share = el("button", "ghost", "Скопировать ссылку");
             share.type = "button";
@@ -396,7 +1137,7 @@
         field("id", "Код", plan.id, (input) => { if (!create) input.readOnly = true; else { input.required = true; input.placeholder = "m12"; } }),
         field("title", "Название", plan.title, (input) => { input.required = true; }),
         field("days", "Дней", plan.days, (input) => { input.type = "number"; input.min = "1"; input.required = true; }),
-        field("priceRub", "Цена, ₽", plan.priceRub, (input) => { input.type = "number"; input.min = "1"; input.required = true; }),
+        field("priceRub", "Цена, ₽, до 10 000", plan.priceRub, (input) => { input.type = "number"; input.min = "1"; input.max = "10000"; input.required = true; }),
         field("trafficGb", "ГБ, 0 = без лимита", plan.trafficGb, (input) => { input.type = "number"; input.min = "0"; input.required = true; }),
         field("sort", "Порядок", plan.sort, (input) => { input.type = "number"; input.min = "0"; input.required = true; }),
       );
@@ -467,7 +1208,7 @@
       });
       const list = document.getElementById("plan-list");
       (data.plans || []).forEach((plan) => list.append(planForm(plan, false)));
-      planForm({ id: "", title: "", days: 30, priceRub: 249, trafficGb: 0, sort: 10, active: true }, true);
+      planForm({ id: "", title: "", days: 30, priceRub: 150, trafficGb: 0, sort: 10, active: true }, true);
     }
 
     async function showPay(me, id) {
@@ -477,14 +1218,16 @@
       if (data.status === "paid") { location.href = `/pay/success?order=${id}`; return; }
       mount("tpl-pay");
       document.getElementById("inv").textContent = `Счёт ${data.invId}`;
-      document.getElementById("title").textContent = data.kind === "renew" ? "Продление" : "Новый ключ";
+      document.getElementById("title").textContent = data.kind === "renew" ? "Продление подписки" : "Новая подписка";
       document.getElementById("price").textContent = rub(data.amountRub);
+      const days = Number(data.planDays) || 0;
+      document.getElementById("offer").textContent = `${rub(data.amountRub)} за ${data.planTitle || "подписку LotVPN"}${days ? `, ${days} дней` : ""}, до ${data.deviceLimit || 4} устройств.`;
       const hint = document.getElementById("hint");
       const note = document.getElementById("demo-note");
       const button = document.getElementById("pay");
       const err = document.getElementById("err");
       if (data.practice) {
-        hint.textContent = `Ключ VPN, ${data.planTitle}. Деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui.`;
+        hint.textContent = `Подписка LotVPN «${data.planTitle}». Деньги не списываются. Демо-оплата создаёт настоящего клиента в панели 3x-ui, до 4 устройств.`;
         button.textContent = "Провести демо-оплату";
         button.onclick = async () => {
           err.textContent = "";
@@ -493,7 +1236,7 @@
           location.href = `/pay/success?order=${id}`;
         };
       } else {
-        hint.textContent = `Ключ VPN, ${data.planTitle}. После оплаты он появится в кабинете.`;
+        hint.textContent = `После оплаты ключ появится в кабинете этой почты. Почта передаётся в платёж как идентификатор покупателя.`;
         button.textContent = "Оплатить через Platega";
         button.onclick = async () => {
           err.textContent = "";
@@ -537,7 +1280,9 @@
         const copy = el("button", "ghost", "Скопировать подписку");
         copy.type = "button";
         copy.onclick = () => copyText(data.key.subscriptionUrl, copy);
-        row.append(copy, Object.assign(el("a", "btn", "Открыть кабинет"), { href: "/cabinet" }));
+        row.append(copy);
+        if (/^https?:\/\//.test(data.key.subscriptionUrl || "")) row.append(Object.assign(el("a", "ghost", "Добавить в Happ"), { href: `happ://add/${data.key.subscriptionUrl}` }));
+        row.append(Object.assign(el("a", "ghost", "Как добавить в Happ или Incy"), { href: "/setup" }), Object.assign(el("a", "btn", "Открыть кабинет"), { href: "/cabinet" }));
         const img = el("img", "qr");
         img.alt = "";
         img.src = `/api/keys/${data.key.id}/qr`;
@@ -557,6 +1302,9 @@
       if (path === "/admin") return showAdmin(me);
       if (path === "/pay/success") return showSuccess(me);
       if (path === "/pay/fail") return mount("tpl-fail");
+      if (path === "/setup") return mount("tpl-setup");
+      if (path === "/privacy") return mount("tpl-privacy");
+      if (path === "/terms") return mount("tpl-terms");
       if (pay) return showPay(me, pay[1]);
       mount("tpl-missing");
     }
